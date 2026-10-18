@@ -70,7 +70,6 @@ Never commit `.env` files or `server/data/`; they hold tokens, OAuth secrets, an
 tenant data and are ignored by `.gitignore`. Keep the test sandbox disabled on
 public hosts because it executes third-party code.
 
-## Docs
+## Pitch deck
 
-- [Product overview](docs/PRODUCT.md)
-- [Pitch deck](docs/KeelCat-Pitch-Deck.pptx)
+[KeelCat pitch deck](docs/KeelCat-Pitch-Deck.pptx)
