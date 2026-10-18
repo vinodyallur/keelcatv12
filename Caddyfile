@@ -1,0 +1,16 @@
+# Caddy v2 reverse proxy — automatic HTTPS + compression.
+#
+# SITE_ADDRESS controls the public address:
+#   • local test  → :80
+#   • production  → your domain, e.g. driftkeel.com (Caddy issues TLS for free)
+#
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy app:8080 {
+		# runs can take a while (fan-out + LLM + sandbox) — don't cut them off
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+}

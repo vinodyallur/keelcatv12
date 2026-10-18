@@ -1,0 +1,15 @@
+# demo-pay API — Changelog
+
+All notable changes to the demo-pay API are documented here.
+
+## v2 — 2024-06 release
+
+### Breaking changes
+- `charges.create`: the `source` parameter has been renamed to `payment_method`.
+- The `createCharge` method has been renamed to `createPayment`.
+
+### Deprecations
+- `customers.create` is deprecated and will be removed in a future release.
+
+### New features
+- Added `paymentLinks.create` for generating shareable payment links.

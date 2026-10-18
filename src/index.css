@@ -1,0 +1,530 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================= *
+ *  Theme tokens (RGB triplets so Tailwind alpha modifiers work) *
+ * ============================================================= */
+:root {
+  --canvas: 6 7 10;
+  --surface: 15 17 22;
+  --surface-raised: 22 25 31;
+  --surface-hover: 30 34 42;
+  --line: 33 37 46;
+  --line-strong: 55 61 74;
+  --content: 244 245 247;
+  --content-muted: 150 157 168;
+  --content-faint: 92 99 112;
+  --accent: 168 255 83;
+  --accent-dim: 126 209 58;
+  --violet: 167 139 250;
+  --sky: 94 179 255;
+  --rose: 255 107 129;
+  --amber: 255 195 92;
+  --emerald: 78 224 162;
+  --field: 11 13 17;
+  --hover: 255 255 255; /* overlay tint base for dark */
+  --panel-top: 255 255 255 / 0.05;
+  --shadow: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 26px 50px -30px rgb(0 0 0 / 0.9);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --canvas: 244 246 249;
+  --surface: 255 255 255;
+  --surface-raised: 255 255 255;
+  --surface-hover: 239 242 246;
+  --line: 224 227 233;
+  --line-strong: 198 204 213;
+  --content: 16 20 28;
+  --content-muted: 84 92 105;
+  --content-faint: 136 143 154;
+  --accent: 47 133 62;
+  --accent-dim: 38 112 52;
+  --violet: 116 84 240;
+  --sky: 22 118 208;
+  --rose: 206 46 70;
+  --amber: 170 116 18;
+  --emerald: 16 146 96;
+  --field: 247 249 251;
+  --hover: 15 23 42; /* overlay tint base for light */
+  --panel-top: 255 255 255 / 0;
+  --shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04), 0 20px 40px -26px rgb(16 24 40 / 0.18);
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply antialiased;
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--content));
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.011em;
+  transition: background-color 0.4s ease, color 0.3s ease;
+}
+
+/* Ambient glows — richer on dark, whisper-soft on light */
+:root:not([data-theme="light"]) body {
+  background-image:
+    radial-gradient(50rem 40rem at 10% -12%, rgb(var(--accent) / 0.1), transparent 60%),
+    radial-gradient(46rem 40rem at 100% -4%, rgb(var(--violet) / 0.1), transparent 58%),
+    radial-gradient(48rem 44rem at 84% 112%, rgb(var(--sky) / 0.08), transparent 56%);
+  background-attachment: fixed;
+}
+:root[data-theme="light"] body {
+  background-image:
+    radial-gradient(52rem 40rem at 8% -14%, rgb(var(--accent) / 0.07), transparent 60%),
+    radial-gradient(46rem 40rem at 102% -6%, rgb(var(--violet) / 0.06), transparent 58%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(var(--content) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--content) / 0.02) 1px, transparent 1px);
+  background-size: 46px 46px, 46px 46px;
+  mask-image: radial-gradient(circle at 50% 38%, black, transparent 88%);
+  opacity: 0.6;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.32);
+  color: rgb(var(--canvas));
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--content) / 0.14);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--content) / 0.26);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .panel {
+    background: rgb(var(--surface));
+    border: 1px solid rgb(var(--line));
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(12px);
+  }
+  .card-hover {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgb(var(--line-strong));
+    background: rgb(var(--surface-raised));
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold;
+    transition: transform 0.14s ease, filter 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+  .btn-accent {
+    @apply btn;
+    background: rgb(var(--accent));
+    color: rgb(var(--canvas));
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.3), 0 12px 30px -10px rgb(var(--accent) / 0.5);
+  }
+  .btn-accent:hover {
+    filter: brightness(1.08);
+  }
+  .btn-outline {
+    @apply btn;
+    border: 1px solid rgb(var(--line-strong));
+    background: rgb(var(--hover) / 0.03);
+    color: rgb(var(--content-muted));
+  }
+  .btn-outline:hover {
+    color: rgb(var(--content));
+    background: rgb(var(--hover) / 0.07);
+    border-color: rgb(var(--line-strong));
+  }
+  .btn-ghost {
+    @apply btn;
+    color: rgb(var(--content-muted));
+  }
+  .btn-ghost:hover {
+    color: rgb(var(--content));
+    background: rgb(var(--hover) / 0.06);
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide;
+  }
+  .nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium cursor-pointer select-none;
+    color: rgb(var(--content-muted));
+    transition: background-color 0.16s ease, color 0.16s ease, padding-left 0.16s ease, box-shadow 0.16s ease;
+  }
+  .nav-item:hover {
+    color: rgb(var(--content));
+    background: rgb(var(--hover) / 0.06);
+    padding-left: 0.9rem;
+  }
+  .nav-item-active {
+    color: rgb(var(--content));
+    background: rgb(var(--hover) / 0.08);
+    box-shadow: inset 0 0 0 1px rgb(var(--line));
+  }
+  .field {
+    @apply w-full rounded-xl px-3.5 py-2.5 text-[13px] outline-none placeholder:text-content-faint;
+    background: rgb(var(--field));
+    border: 1px solid rgb(var(--line));
+    color: rgb(var(--content));
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .field:focus {
+    border-color: rgb(var(--accent) / 0.55);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.14);
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .gradient-text {
+    background: linear-gradient(100deg, rgb(var(--content)) 0%, rgb(var(--accent)) 42%, rgb(var(--violet)) 74%, rgb(var(--content)) 100%);
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-pan 9s ease infinite;
+  }
+}
+
+/* Dark, on-brand <select> — custom chevron + dark option list. */
+select.field {
+  @apply cursor-pointer appearance-none pr-9;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgb(168,255,83)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+select.field option,
+select.field optgroup {
+  background: rgb(var(--surface-raised));
+  color: rgb(var(--content));
+}
+
+html {
+  scroll-behavior: smooth;
+}
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: translateY(0.5px) scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.switch {
+  @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full;
+  background: rgb(var(--content) / 0.16);
+  border: 1px solid rgb(var(--line));
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.switch[data-on="true"] {
+  background: rgb(var(--accent));
+  border-color: rgb(var(--accent) / 0.5);
+}
+.switch-knob {
+  @apply absolute left-0.5 rounded-full;
+  height: 1.125rem;
+  width: 1.125rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease;
+}
+.switch[data-on="true"] .switch-knob {
+  transform: translateX(1.25rem);
+  background: rgb(var(--canvas));
+}
+
+/* ============================================================= *
+ *  NEUMORPHIC / SOFT-UI SKIN  (data-skin="skeuo")               *
+ *  Retro-tactile: one soft material, dual highlight+shadow,     *
+ *  no visible borders. Extruded surfaces, pressed inputs.       *
+ * ============================================================= */
+
+/* --- Token remap: surface == canvas, borders invisible ------ */
+:root[data-skin="skeuo"][data-theme="light"] {
+  --canvas: 216 213 205;      /* darker warm material — less white */
+  --surface: 216 213 205;
+  --surface-raised: 216 213 205;
+  --surface-hover: 207 203 194;
+  --line: 216 213 205;
+  --line-strong: 216 213 205;
+  --content: 28 25 21;        /* near-black warm — strong contrast */
+  --content-muted: 74 68 60;
+  --content-faint: 112 105 95;
+  --field: 216 213 205;
+  --accent: 22 82 40;         /* deep forest green — clearly legible */
+  --accent-dim: 15 64 30;
+  /* neumorphic shadow pair — warm, well-defined */
+  --nm-dark: 168 163 152;
+  --nm-light: 255 255 252;
+  --nm-da: 1;
+  --nm-la: 1;
+  --nm-d: 6px;
+  --nm-b: 13px;
+  --btn-edge: 0 0 0;          /* small dark border to highlight buttons */
+  --btn-edge-a: 0.26;
+}
+:root[data-skin="skeuo"][data-theme="dark"] {
+  --canvas: 24 26 30;         /* deep charcoal — darker, sharper */
+  --surface: 24 26 30;
+  --surface-raised: 24 26 30;
+  --surface-hover: 31 34 40;
+  --line: 24 26 30;
+  --line-strong: 24 26 30;
+  --content: 242 245 250;     /* bright text — high contrast */
+  --content-muted: 178 185 198;
+  --content-faint: 124 132 147;
+  --field: 24 26 30;
+  --accent: 156 242 104;
+  --accent-dim: 182 248 132;
+  --nm-dark: 6 7 9;           /* near-black shadow — crisp definition */
+  --nm-light: 50 55 64;       /* restrained highlight — less haze */
+  --nm-da: 0.9;
+  --nm-la: 0.45;
+  --nm-d: 5px;
+  --nm-b: 10px;               /* tighter blur -> sharper, not fuzzy */
+  --btn-edge: 0 0 0;
+  --btn-edge-a: 0.55;
+}
+
+:root[data-skin="skeuo"] {
+  --nm-d: 5px;    /* shadow offset  */
+  --nm-b: 12px;   /* shadow blur    */
+  --nm-r: 15px;   /* control radius */
+  --nm-r-lg: 26px;
+}
+
+/* Clean, flat soft backdrop — kill the grid + glows */
+:root[data-skin="skeuo"] body {
+  background-image: none !important;
+}
+:root[data-skin="skeuo"] body::before {
+  display: none;
+}
+
+/* Crisp, solid hero title — no washed gradient in the soft skin */
+:root[data-skin="skeuo"] .gradient-text {
+  background: none;
+  -webkit-text-fill-color: rgb(var(--content));
+  color: rgb(var(--content));
+  animation: none;
+}
+/* Tone down the coloured hero blooms so light mode isn't murky */
+:root[data-skin="skeuo"] .blur-3xl {
+  opacity: 0.5;
+}
+:root[data-skin="skeuo"][data-theme="light"] .blur-3xl {
+  opacity: 0.22;
+}
+
+/* Smooth, non-janky transitions when toggling into the skin */
+:root[data-skin="skeuo"] .panel,
+:root[data-skin="skeuo"] .btn,
+:root[data-skin="skeuo"] .field,
+:root[data-skin="skeuo"] .chip,
+:root[data-skin="skeuo"] .switch,
+:root[data-skin="skeuo"] .nav-item {
+  transition:
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.3s ease, color 0.22s ease,
+    transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ---- Panels: extruded soft cards --------------------------- */
+:root[data-skin="skeuo"] .panel {
+  border: none;
+  border-radius: var(--nm-r-lg);
+  background: rgb(var(--surface));
+  backdrop-filter: none;
+  box-shadow:
+    var(--nm-d) var(--nm-d) var(--nm-b) rgb(var(--nm-dark) / var(--nm-da)),
+    calc(-1 * var(--nm-d)) calc(-1 * var(--nm-d)) var(--nm-b) rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .card-hover:hover {
+  transform: translateY(-2px);
+  background: rgb(var(--surface));
+  box-shadow:
+    calc(var(--nm-d) + 3px) calc(var(--nm-d) + 3px) calc(var(--nm-b) + 6px) rgb(var(--nm-dark) / var(--nm-da)),
+    calc(-1 * (var(--nm-d) + 3px)) calc(-1 * (var(--nm-d) + 3px)) calc(var(--nm-b) + 6px) rgb(var(--nm-light) / var(--nm-la));
+}
+
+/* Big hero block uses .rounded-3xl (not .panel) — extrude it too */
+:root[data-skin="skeuo"] .rounded-3xl {
+  border-color: transparent !important;
+  box-shadow:
+    7px 7px 18px rgb(var(--nm-dark) / var(--nm-da)),
+    -7px -7px 18px rgb(var(--nm-light) / var(--nm-la));
+}
+
+/* ---- Buttons: extruded pads that press in ------------------ */
+:root[data-skin="skeuo"] .btn {
+  border-radius: var(--nm-r);
+  border: 1px solid rgb(var(--btn-edge) / var(--btn-edge-a)) !important;
+  font-weight: 600;
+  background: rgb(var(--surface));
+  box-shadow:
+    4px 4px 9px rgb(var(--nm-dark) / var(--nm-da)),
+    -4px -4px 9px rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .btn:hover {
+  filter: none;
+  box-shadow:
+    5px 5px 11px rgb(var(--nm-dark) / var(--nm-da)),
+    -5px -5px 11px rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .btn:active,
+:root[data-skin="skeuo"] .btn:disabled {
+  transform: none;
+  box-shadow:
+    inset 3px 3px 7px rgb(var(--nm-dark) / var(--nm-da)),
+    inset -3px -3px 7px rgb(var(--nm-light) / var(--nm-la));
+}
+
+/* Primary keeps the accent as text/emblem colour (monochrome face) */
+:root[data-skin="skeuo"] .btn-accent {
+  background: rgb(var(--surface));
+  color: rgb(var(--accent-dim));
+}
+:root[data-skin="skeuo"] .btn-accent * {
+  color: inherit;
+}
+:root[data-skin="skeuo"] .btn-outline,
+:root[data-skin="skeuo"] .btn-ghost {
+  color: rgb(var(--content-muted));
+}
+:root[data-skin="skeuo"] .btn-ghost {
+  box-shadow: none;
+  background: transparent;
+  border-color: transparent !important;
+}
+:root[data-skin="skeuo"] .btn-ghost:hover {
+  background: rgb(var(--surface));
+  border-color: rgb(var(--btn-edge) / var(--btn-edge-a)) !important;
+  box-shadow:
+    4px 4px 9px rgb(var(--nm-dark) / var(--nm-da)),
+    -4px -4px 9px rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .btn-outline:hover,
+:root[data-skin="skeuo"] .btn-ghost:hover {
+  color: rgb(var(--content));
+}
+
+/* ---- Fields: pressed into the surface ---------------------- */
+:root[data-skin="skeuo"] .field {
+  border: none;
+  border-radius: 12px;
+  background-color: rgb(var(--surface));
+  box-shadow:
+    inset 3px 3px 7px rgb(var(--nm-dark) / var(--nm-da)),
+    inset -3px -3px 7px rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .field:focus {
+  box-shadow:
+    inset 3px 3px 7px rgb(var(--nm-dark) / var(--nm-da)),
+    inset -3px -3px 7px rgb(var(--nm-light) / var(--nm-la)),
+    0 0 0 2px rgb(var(--accent) / 0.4);
+}
+:root[data-skin="skeuo"] select.field {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgb(130,138,153)' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+
+/* Common inner sub-cards (bg-white overlays) -> engraved trays */
+:root[data-skin="skeuo"] .bg-white\/\[0\.02\],
+:root[data-skin="skeuo"] .bg-white\/\[0\.03\] {
+  background: rgb(var(--surface)) !important;
+  border-color: transparent !important;
+  box-shadow:
+    inset 2px 2px 5px rgb(var(--nm-dark) / calc(var(--nm-da) * 0.8)),
+    inset -2px -2px 5px rgb(var(--nm-light) / calc(var(--nm-la) * 0.85));
+}
+
+/* ---- Chips: soft raised tags ------------------------------- */
+:root[data-skin="skeuo"] .chip {
+  box-shadow:
+    2px 2px 5px rgb(var(--nm-dark) / calc(var(--nm-da) * 0.7)),
+    -2px -2px 5px rgb(var(--nm-light) / calc(var(--nm-la) * 0.8));
+}
+
+/* ---- Nav: active item pressed into the rail ---------------- */
+:root[data-skin="skeuo"] .nav-item-active {
+  background: rgb(var(--surface));
+  box-shadow:
+    inset 3px 3px 6px rgb(var(--nm-dark) / var(--nm-da)),
+    inset -3px -3px 6px rgb(var(--nm-light) / var(--nm-la));
+}
+:root[data-skin="skeuo"] .nav-item:hover {
+  background: transparent;
+}
+:root[data-skin="skeuo"] .nav-item-active:hover {
+  background: rgb(var(--surface));
+}
+
+/* ---- Switch: inset track + extruded knob ------------------- */
+/* Visibility beats subtlety: the OFF knob must always read clearly. */
+:root[data-skin="skeuo"] .switch {
+  border: 1px solid rgb(var(--content) / 0.18);
+  background: rgb(var(--content) / 0.22);
+  box-shadow: inset 1px 1px 3px rgb(var(--nm-dark) / calc(var(--nm-da) * 0.6));
+}
+:root[data-skin="skeuo"] .switch[data-on="true"] {
+  border-color: rgb(var(--accent) / 0.6);
+  background: rgb(var(--accent));
+  box-shadow: inset 1px 1px 3px rgb(0 0 0 / 0.25);
+}
+/* Always a bright white knob with a crisp shadow + hairline ring — visible in
+   both themes and both states. */
+:root[data-skin="skeuo"] .switch-knob {
+  background: linear-gradient(180deg, #ffffff 0%, #eef1f4 100%);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(0 0 0 / 0.12);
+}
+:root[data-skin="skeuo"] .switch[data-on="true"] .switch-knob {
+  background: #ffffff;
+}

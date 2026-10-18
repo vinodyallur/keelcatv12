@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.vite/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+*.env
+!.env.example
+*.pem
+*.key
+
+# Runtime data: tenant configs, secrets, run history, admin settings
+server/data/*
+!server/data/.gitignore
+
+# Internal notes and local artifacts
+HANDOFF.md
+demo-result.json
+_live_check.ps1
+
+# Logs, OS, and editor files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+~$*
