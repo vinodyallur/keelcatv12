@@ -1,0 +1,24 @@
+{
+  "providerId": "demo-pay",
+  "version": "2024-01-01",
+  "symbols": [
+    {
+      "name": "charges.create",
+      "requiredParams": ["amount", "currency", "source"],
+      "optionalParams": ["description", "metadata"],
+      "deprecated": false
+    },
+    {
+      "name": "customers.create",
+      "requiredParams": ["email"],
+      "optionalParams": ["name"],
+      "deprecated": false
+    },
+    {
+      "name": "refunds.create",
+      "requiredParams": ["charge"],
+      "optionalParams": ["amount"],
+      "deprecated": false
+    }
+  ]
+}

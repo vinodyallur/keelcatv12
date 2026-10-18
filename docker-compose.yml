@@ -1,0 +1,38 @@
+# APISteward — single-service app behind Caddy (auto-HTTPS + gzip/zstd).
+#
+#   cp .env.example .env   &&   edit .env
+#   docker compose up -d --build
+#
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PORT=8080
+      - PUBLIC_DIR=/app/dist
+      - NODE_ENV=production            # marks session cookies Secure (served via Caddy HTTPS)
+    volumes:
+      - app-data:/app/server/data        # config/secrets/state persist across redeploys
+    expose:
+      - "8080"                            # internal only; Caddy is the public edge
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      - SITE_ADDRESS=${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data                  # TLS certs — keep them so you aren't re-issuing
+      - caddy-config:/config
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

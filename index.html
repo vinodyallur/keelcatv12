@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/keelcat-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>KeelCat — Self-Maintaining APIs</title>
+    <style id="kc-native-shell">
+      /* Native-app shell (used when wrapped in the Android WebView): lock the
+         layout, respect the notch + gesture bar. Harmless on desktop web. */
+      html, body {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      @media (max-width: 1023px) {
+        html, body { overscroll-behavior: none; overflow-x: hidden; }
+        header { padding-top: env(safe-area-inset-top); }
+        aside { padding-top: env(safe-area-inset-top); }
+        main { padding-bottom: calc(env(safe-area-inset-bottom) + 12px); }
+      }
+    </style>
+    <script>
+      // Apply saved theme + skin before paint to avoid a flash of the wrong style.
+      (function () {
+        try {
+          var t = localStorage.getItem("apisteward.theme") || "dark";
+          var s = localStorage.getItem("apisteward.skin") || "skeuo";
+          var el = document.documentElement;
+          el.dataset.theme = t;
+          el.dataset.skin = s;
+          el.classList.toggle("dark", t === "dark");
+          el.style.background =
+            s === "skeuo"
+              ? t === "light" ? "#d8d5cd" : "#181a1e"
+              : t === "light" ? "#f6f7f9" : "#06070a";
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "sample-checkout-app",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "demo-pay": "^1.0.0"
+  }
+}
