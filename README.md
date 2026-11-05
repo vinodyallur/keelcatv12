@@ -2,7 +2,10 @@
 
 **Your APIs change. Your code keeps up. Powered by Meta Muse Spark.**
 
-Live product: [keelcat.in](https://keelcat.in)
+### ▶ Try it live: **[keelcat.in](https://keelcat.in)**
+
+No account needed: open [keelcat.in](https://keelcat.in), click **Sign in**, then **Continue as guest**.
+You can also sign in with GitHub or Google.
 
 ## The problem
 
