@@ -1,6 +1,252 @@
 import { useEffect, useState } from "react";
-import { api, type AdminOverview, type AdminSettings } from "../api";
+import { api, type AdminOverview, type AdminSettings, type DefaultLlmView, type SalesLead } from "../api";
 import { Panel, SectionHead, Chip, Switch, Spinner } from "./ui";
+
+const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
+const AI_PRESETS: Record<string, { label: string; baseUrl: string; model: string }> = {
+  "meta-muse": { label: "Meta Muse Spark 1.3 (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3" },
+  "meta-muse-wonder": { label: "Meta Muse Wonder (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-wonder" },
+  "meta-llama-maverick": { label: "Meta Llama 4 Maverick (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-maverick" },
+  "meta-llama-scout": { label: "Meta Llama 4 Scout (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-scout" },
+  custom: { label: "Meta model on another OpenAI-compatible host", baseUrl: "", model: "" },
+};
+
+// Save and Test both work with the switch off, so say when nobody gets the default yet.
+function offReason(v: DefaultLlmView): string | null {
+  if (!v.enabled) return "the default AI is switched off, so nobody uses it yet. Turn on the switch at the top right, then Save.";
+  if (!v.forGuests && !v.forUsers) return "Guests and Signed-in users are both off, so nobody uses it yet.";
+  return null;
+}
+
+function savedStatus(v: DefaultLlmView): { ok: boolean; text: string } {
+  const off = offReason(v);
+  if (off) return { ok: false, text: `Saved, but ${off}` };
+  const who = v.forGuests && v.forUsers ? "Guests and signed-in users" : v.forGuests ? "Guests" : "Signed-in users";
+  return { ok: true, text: `Saved and on. ${who} without their own key now use it. Click Test saved settings to check it answers.` };
+}
+
+function DefaultAiPanel() {
+  const [view, setView] = useState<DefaultLlmView | null>(null);
+  const [draft, setDraft] = useState<DefaultLlmView | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function apply(v: DefaultLlmView) {
+    setView(v);
+    setDraft(v.baseUrl ? v : { ...v, baseUrl: AI_PRESETS[v.provider]?.baseUrl ?? "" });
+    setApiKey("");
+  }
+
+  useEffect(() => {
+    api.admin.defaultLlm.get().then(apply).catch((e) => setMsg({ ok: false, text: (e as Error).message }));
+  }, []);
+
+  async function act(fn: () => Promise<string | { ok: boolean; text: string }>) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fn();
+      setMsg(typeof r === "string" ? { ok: true, text: r } : r);
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const save = () =>
+    act(async () => {
+      const { enabled, provider, baseUrl, model, forGuests, forUsers, dailyLimitPerWorkspace, dailyLimitTotal } = draft!;
+      const saved = await api.admin.defaultLlm.save({
+        enabled, provider, baseUrl, model, forGuests, forUsers, dailyLimitPerWorkspace, dailyLimitTotal,
+        apiKey: apiKey || undefined,
+      });
+      apply(saved);
+      return savedStatus(saved);
+    });
+  const test = () =>
+    act(async () => {
+      const { sample } = await api.admin.defaultLlm.test();
+      const off = offReason(view!);
+      return off ? { ok: false, text: `Connected, but ${off}` } : `Connected. The model replied: "${sample}"`;
+    });
+  const remove = () => {
+    if (!confirm("Remove the default AI and delete its key? Workspaces without their own key will use basic parsing.")) return;
+    act(async () => {
+      apply(await api.admin.defaultLlm.remove());
+      return "Removed.";
+    });
+  };
+
+  if (!view || !draft) {
+    return <Panel className="p-6 text-[13px] text-content-muted">{msg ? msg.text : <Spinner label="Loading default AI…" />}</Panel>;
+  }
+
+  return (
+    <Panel className="p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-xl">
+          <div className="text-[15px] font-semibold text-content">Default Meta model for users</div>
+          <div className="mt-1 text-[12px] text-content-muted">
+            Workspaces without their own key use this Meta model (KeelCat AI) automatically. Users never see its URL, model or key, and can switch to their own key anytime. Only admins can change it.
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Chip tone={view.enabled ? "emerald" : "neutral"}>{view.enabled ? "on" : "off"}</Chip>
+          <Switch on={draft.enabled} onChange={(v) => setDraft({ ...draft, enabled: v })} />
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <label className="block">
+          <span className="text-[12px] font-medium text-content-muted">Provider</span>
+          <select
+            className="field mt-1"
+            value={draft.provider}
+            onChange={(e) => {
+              const p = AI_PRESETS[e.target.value];
+              setDraft({ ...draft, provider: e.target.value, baseUrl: p?.baseUrl ?? draft.baseUrl, model: p?.model || draft.model });
+            }}
+          >
+            {Object.entries(AI_PRESETS).map(([key, p]) => (
+              <option key={key} value={key}>{p.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-[12px] font-medium text-content-muted">Model</span>
+          <input className="field mt-1" value={draft.model} placeholder="auto" onChange={(e) => setDraft({ ...draft, model: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className="text-[12px] font-medium text-content-muted">API key</span>
+          <input
+            type="password"
+            autoComplete="new-password"
+            className="field mt-1"
+            value={apiKey}
+            placeholder={view.hasKey ? `saved, ends in ${view.keyLast4} (paste to replace)` : "paste key"}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+        </label>
+      </div>
+      <label className="mt-4 block">
+        <span className="text-[12px] font-medium text-content-muted">Base URL (OpenAI-compatible, usually ending in /v1)</span>
+        <input
+          className="field mt-1 font-mono text-[12px]"
+          value={draft.baseUrl}
+          placeholder="https://host/v1"
+          onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
+        />
+        {draft.provider === "custom" && (
+          <span className="mt-1 block text-[11px] text-content-faint">
+            Use the OpenAI-compatible URL of the host serving your Meta model, for example Meta Model API, Fireworks, Baseten or Modal. This server must be able to reach it.
+          </span>
+        )}
+      </label>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-line bg-white/[0.02] p-3.5">
+          <div>
+            <div className="text-[13px] font-medium text-content">Guests</div>
+            <div className="text-[11px] text-content-faint">Visitors who continue as a guest</div>
+          </div>
+          <Switch on={draft.forGuests} onChange={(v) => setDraft({ ...draft, forGuests: v })} />
+        </div>
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-line bg-white/[0.02] p-3.5">
+          <div>
+            <div className="text-[13px] font-medium text-content">Signed-in users</div>
+            <div className="text-[11px] text-content-faint">GitHub and Google accounts, including yours</div>
+          </div>
+          <Switch on={draft.forUsers} onChange={(v) => setDraft({ ...draft, forUsers: v })} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-[12px] font-medium text-content-muted">Daily AI calls per workspace (0 = unlimited)</span>
+          <input type="number" min={0} className="field mt-1" value={draft.dailyLimitPerWorkspace}
+            onChange={(e) => setDraft({ ...draft, dailyLimitPerWorkspace: Number(e.target.value) })} />
+        </label>
+        <label className="block">
+          <span className="text-[12px] font-medium text-content-muted">Daily AI calls in total (0 = unlimited)</span>
+          <input type="number" min={0} className="field mt-1" value={draft.dailyLimitTotal}
+            onChange={(e) => setDraft({ ...draft, dailyLimitTotal: Number(e.target.value) })} />
+        </label>
+      </div>
+      <p className="mt-2 text-[11px] text-content-faint">
+        {view.usedToday} call{view.usedToday === 1 ? "" : "s"} today. Limits protect your key: once reached, users fall back to basic parsing until midnight UTC.
+      </p>
+
+      {msg && <p className={`mt-4 text-[12px] ${msg.ok ? "text-emerald" : "text-rose"}`}>{msg.text}</p>}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <button className="btn-accent" onClick={save} disabled={busy}>{busy ? "Working…" : "Save"}</button>
+        <button className="btn-outline" onClick={test} disabled={busy || !view.hasKey}>Test saved settings</button>
+        {(view.hasKey || view.baseUrl) && (
+          <button className="btn-ghost text-rose" onClick={remove} disabled={busy}>Remove</button>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function SalesLeadsPanel() {
+  const [leads, setLeads] = useState<SalesLead[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.admin.salesLeads.list().then(setLeads).catch((e) => setError((e as Error).message));
+  }, []);
+
+  async function remove(id: string) {
+    if (!confirm("Delete this inquiry? This cannot be undone.")) return;
+    try {
+      await api.admin.salesLeads.remove(id);
+      setLeads((list) => list?.filter((l) => l.id !== id) ?? list);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  return (
+    <Panel className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-[15px] font-semibold text-content">Sales inquiries</div>
+        <Chip tone="neutral">{leads?.length ?? 0} total</Chip>
+      </div>
+      {error && <p className="mb-3 text-[12px] text-rose">{error}</p>}
+      {!leads ? (
+        !error && <Spinner label="Loading inquiries…" />
+      ) : leads.length === 0 ? (
+        <p className="text-[13px] text-content-muted">No inquiries yet. They appear here when someone uses Contact sales on the Pricing page.</p>
+      ) : (
+        <div className="space-y-2">
+          {leads.map((l) => (
+            <div key={l.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-line bg-white/[0.02] p-3.5">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[13px] font-medium text-content">{l.name}</span>
+                  {l.company && <span className="text-[12px] text-content-muted">· {l.company}</span>}
+                  <Chip tone="accent">{l.licenses.toLocaleString("en-IN")} license{l.licenses === 1 ? "" : "s"}</Chip>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-3 text-[12px]">
+                  <a className="text-accent hover:underline" href={`mailto:${l.email}`}>{l.email}</a>
+                  <a className="text-accent hover:underline" href={`tel:${l.phone.replace(/[^\d+]/g, "")}`}>{l.phone}</a>
+                </div>
+                {l.message && <p className="mt-2 whitespace-pre-wrap break-words text-[12px] text-content-muted">{l.message}</p>}
+                <div className="mt-1 text-[11px] text-content-faint">
+                  {new Date(l.at).toLocaleString()} · {l.tenantId.startsWith("guest_") ? "guest" : "signed in"}{l.login ? ` as ${l.login}` : ""}
+                </div>
+              </div>
+              <button className="btn-ghost text-[12px] text-rose" onClick={() => remove(l.id)}>Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
 
 /**
  * Owner-only admin console. Toggle the billing paywall, tune the free limit and
@@ -52,7 +298,7 @@ export default function Admin() {
 
   return (
     <div className="animate-fade-up space-y-6">
-      <SectionHead eyebrow="Admin" title="Admin console" desc="Owner-only controls for billing and workspaces." />
+      <SectionHead eyebrow="Admin" title="Admin console" desc="Owner-only controls for billing, the default AI, sales inquiries and workspaces." />
 
       {/* Billing settings */}
       <Panel className="p-6">
@@ -99,6 +345,10 @@ export default function Admin() {
           {saving ? "Saving…" : "Save settings"}
         </button>
       </Panel>
+
+      <DefaultAiPanel />
+
+      <SalesLeadsPanel />
 
       {/* Tenants */}
       <Panel className="p-6">

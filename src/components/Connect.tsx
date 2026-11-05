@@ -28,22 +28,20 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
   const webhookUrl = `${(import.meta.env.VITE_API_URL ?? window.location.origin).replace(/\/$/, "")}/api/webhook/github`;
 
   // LLM
-  const [llmProvider, setLlmProvider] = useState("on-device");
-  const [llmModel, setLlmModel] = useState("gemma (on-device)");
+  const [llmProvider, setLlmProvider] = useState("openrouter");
+  const [llmModel, setLlmModel] = useState("meta/muse-spark-1.3");
   const [llmBaseUrl, setLlmBaseUrl] = useState("");
   const [llmKey, setLlmKey] = useState("");
   const [llmTest, setLlmTest] = useState<string | null>(null);
 
   const MODEL_PRESETS: Record<string, { keyHint: string; models: string[]; baseUrl?: string; needsBaseUrl?: boolean; kind: "local" | "cloud" | "none" }> = {
-    "on-device": { keyHint: "runs on this phone — no key", models: ["gemma (on-device)"], kind: "local" },
-    ollama: { keyHint: "local server — no key needed", models: ["llama3.2", "qwen2.5-coder", "gemma2", "phi3"], baseUrl: "http://127.0.0.1:11434/v1", needsBaseUrl: true, kind: "local" },
-    openrouter: { keyHint: "starts with sk-or-…", models: ["google/gemma-4-26b-a4b-it:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-chat-v3-0324:free"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
-    openai: { keyHint: "starts with sk-…", models: ["gpt-4o-mini", "gpt-4o"], baseUrl: "https://api.openai.com/v1", kind: "cloud" },
-    gemini: { keyHint: "starts with AIza…", models: ["gemini-2.0-flash", "gemini-1.5-flash"], baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", kind: "cloud" },
-    custom: { keyHint: "any OpenAI-compatible endpoint", models: ["gpt-4o-mini"], needsBaseUrl: true, kind: "cloud" },
+    "on-device": { keyHint: "runs on this phone — no key", models: ["on-device model"], kind: "local" },
+    ollama: { keyHint: "local server — no key needed", models: ["llama3.3", "llama3.2", "llama3.1"], baseUrl: "http://127.0.0.1:11434/v1", needsBaseUrl: true, kind: "local" },
+    openrouter: { keyHint: "starts with sk-or-…", models: ["meta/muse-spark-1.3", "meta/muse-wonder", "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout", "meta-llama/llama-3.3-70b-instruct"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
+    custom: { keyHint: "any OpenAI-compatible host serving Meta models", models: [], needsBaseUrl: true, kind: "cloud" },
     disabled: { keyHint: "no key needed", models: [], kind: "none" },
   };
-  const showBaseUrl = ["ollama", "openrouter", "openai", "gemini", "custom"].includes(llmProvider);
+  const showBaseUrl = ["ollama", "openrouter", "custom"].includes(llmProvider);
 
   function changeProvider(p: string) {
     setLlmProvider(p);
@@ -211,6 +209,18 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
       setLlmKey("");
     } catch (e) {
       setLlmTest(null);
+      setError(`LLM: ${(e as Error).message}`);
+    }
+  }
+
+  async function switchToDefaultAi() {
+    if (cfg?.hasLlmKey && !confirm("Remove your saved LLM key and use KeelCat AI instead?")) return;
+    setError(null);
+    try {
+      refresh(await api.config.useDefaultLlm());
+      setLlmKey("");
+      setLlmTest("✓ Using KeelCat AI");
+    } catch (e) {
       setError(`LLM: ${(e as Error).message}`);
     }
   }
@@ -469,13 +479,33 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
       <Panel className="p-6">
         <div className="flex items-center justify-between">
           <h3 className="text-[15px] font-semibold text-content">LLM (for reading changelogs)</h3>
-          {cfg?.hasLlmKey ? <Chip tone="emerald">key saved</Chip> : <Chip tone="amber">no key yet</Chip>}
+          {cfg?.hasLlmKey ? (
+            <Chip tone="emerald">key saved</Chip>
+          ) : cfg?.aiDefault?.active ? (
+            <Chip tone="accent">KeelCat AI</Chip>
+          ) : (
+            <Chip tone="amber">no key yet</Chip>
+          )}
         </div>
         <p className="mt-1 text-[12px] text-content-faint">
-          Turns a human changelog into a precise change list. Switch between a <b>local</b> LLM
-          (on-device, or Ollama on your machine — private, no key) and a <b>cloud</b> LLM
-          (OpenRouter/OpenAI/Gemini). Deterministic parsing always works as a fallback.
+          Turns a human changelog into a precise change list with Meta models. Run <b>Meta Llama</b> locally
+          (on-device, or Ollama on your machine — private, no key) or <b>Meta Muse Spark / Llama 4</b> in the cloud
+          (OpenRouter or any OpenAI-compatible Meta host). Deterministic parsing always backs up the model.
         </p>
+        {cfg?.aiDefault?.active && (
+          <div className="mt-3 rounded-xl border border-accent/30 bg-accent-soft p-3 text-[12px] leading-relaxed text-content">
+            <b>KeelCat AI is on for your workspace.</b> No key needed. To use your own provider instead, add its key below.
+            {cfg.aiDefault.exhausted && (
+              <span className="text-amber"> Today's KeelCat AI limit is reached, so basic parsing is used until tomorrow.</span>
+            )}
+          </div>
+        )}
+        {cfg?.aiDefault?.available && !cfg.aiDefault.active && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-content-muted">
+            <span>KeelCat AI is available for your workspace.</span>
+            <button className="btn-ghost text-[12px]" onClick={switchToDefaultAi}>Use KeelCat AI</button>
+          </div>
+        )}
         <div className="mt-3 flex items-center gap-2">
           <Chip tone={MODEL_PRESETS[llmProvider]?.kind === "cloud" ? "sky" : "accent"}>
             {MODEL_PRESETS[llmProvider]?.kind === "cloud" ? "☁ cloud" : MODEL_PRESETS[llmProvider]?.kind === "local" ? "⌂ local" : "○ off"}
@@ -490,13 +520,11 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
             <select className="field" value={llmProvider} onChange={(e) => changeProvider(e.target.value)}>
               <optgroup label="Local (private, on-device / your machine)">
                 <option value="on-device">On-device (phone)</option>
-                <option value="ollama">Ollama (local server)</option>
+                <option value="ollama">Ollama: Meta Llama (local server)</option>
               </optgroup>
-              <optgroup label="Cloud">
-                <option value="openrouter">OpenRouter</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
-                <option value="custom">Custom (OpenAI-compatible)</option>
+              <optgroup label="Cloud (Meta models)">
+                <option value="openrouter">Meta Muse / Llama via OpenRouter</option>
+                <option value="custom">Meta model on another host (OpenAI-compatible)</option>
               </optgroup>
               <option value="disabled">Disabled (manual changes only)</option>
             </select>

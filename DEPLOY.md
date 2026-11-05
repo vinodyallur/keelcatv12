@@ -21,9 +21,7 @@ timer, so do not move it to a default, autoscaling Cloud Run service as-is.
 That would need a separate storage and background-job design.
 
 Deploy a separate demo first. Leave the AWS instance, production DNS, existing
-OAuth callbacks, and production webhooks unchanged. Confirm the competition's
-rules separately: hosting on Google Cloud does not by itself prove that any
-required Gemini or Vertex AI integration is satisfied.
+OAuth callbacks, and production webhooks unchanged.
 
 ### 1. Prepare the Google Cloud project
 - Open [Google Cloud Console](https://console.cloud.google.com/), select or
@@ -146,7 +144,7 @@ nano .env
 Set at minimum:
 - `SITE_ADDRESS=yourdomain.com`  (or `:80` to test by IP first)
 - `APP_PASSWORD=<a strong password>`
-- `LLM_API_KEY=<your OpenRouter/Gemini key>`
+- `LLM_API_KEY=<your OpenRouter key for Meta models>`
 - `GITHUB_PAT=<token>`  *(or the `GITHUB_APP_*` values)*
 
 ### 5. Launch

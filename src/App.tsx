@@ -249,7 +249,7 @@ function StatusCard({ online, cfg }: { online: boolean | null; cfg: PublicConfig
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <Chip tone={cfg?.hasPat || cfg?.hasAppKey ? "emerald" : "amber"}>GitHub</Chip>
-        <Chip tone={cfg?.hasLlmKey ? "emerald" : "amber"}>LLM</Chip>
+        <Chip tone={(cfg?.llmReady ?? cfg?.hasLlmKey) ? "emerald" : "amber"}>LLM</Chip>
         <Chip tone={selected ? "accent" : "amber"}>{selected} Repos</Chip>
       </div>
     </div>
@@ -423,7 +423,7 @@ function Overview({ cfg, go }: { cfg: PublicConfig | null; go: (v: View) => void
   const selected = cfg?.repos.filter((r) => r.selected).length ?? 0;
   const steps: { done: boolean; label: string; view: View }[] = [
     { done: Boolean(cfg?.hasPat || cfg?.hasAppKey), label: "Connect GitHub", view: "connect" },
-    { done: Boolean(cfg?.hasLlmKey), label: "Add LLM key", view: "connect" },
+    { done: Boolean(cfg?.llmReady ?? cfg?.hasLlmKey), label: "Add LLM key", view: "connect" },
     { done: selected > 0, label: "Select repositories", view: "connect" },
     { done: false, label: "Post a changelog", view: "changelog" },
   ];

@@ -25,6 +25,7 @@ import { Router } from "express";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getBilling, setPremium, logAudit, type BillingInterval } from "../config/store.js";
 import { currentTenantId, currentContext, runWithTenant } from "../auth/context.js";
+import { cleanSalesLead, addSalesLead } from "../config/sales-leads.js";
 
 export const billingRouter = Router();
 
@@ -63,6 +64,20 @@ billingRouter.get("/api/billing", (_req, res) => {
     priceInr: PRICE_MONTHLY_INR,
     keyId: KEY_ID ?? null, // publishable — safe to expose to the browser
   });
+});
+
+// POST /api/sales/contact — Enterprise "Contact sales" form from the Pricing page.
+billingRouter.post("/api/sales/contact", (req, res) => {
+  const result = cleanSalesLead(req.body);
+  if ("error" in result) return res.status(400).json({ error: result.error });
+  let saved: boolean;
+  try {
+    saved = addSalesLead(result.lead, { tenantId: currentTenantId(), login: currentContext()?.login });
+  } catch {
+    return res.status(500).json({ error: "Couldn't save your request. Please email hello@keelcat.in instead." });
+  }
+  if (!saved) return res.status(429).json({ error: "Too many requests today. Please email hello@keelcat.in instead." });
+  res.json({ ok: true });
 });
 
 // POST /api/billing/order — create a Razorpay order for the upgrade.

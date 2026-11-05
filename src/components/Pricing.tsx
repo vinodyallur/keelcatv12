@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Panel, Chip } from "./ui";
 import Upgrade from "./Upgrade";
+import ContactSales from "./ContactSales";
 import { api, type PublicConfig } from "../api";
 
 /**
@@ -14,6 +15,7 @@ export default function Pricing({ cfg, onUpgraded }: { cfg: PublicConfig | null;
   const [region, setRegion] = useState<"in" | "intl">("in");
   const [interval, setInterval] = useState<"monthly" | "annual">("annual");
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showSales, setShowSales] = useState(false);
   const [cryptoNote, setCryptoNote] = useState(false);
 
   const plan = cfg?.billing?.plan ?? "free";
@@ -145,9 +147,9 @@ export default function Pricing({ cfg, onUpgraded }: { cfg: PublicConfig | null;
             <li>✓ Dedicated support &amp; SLA</li>
             <li>✓ Volume &amp; multi-seat pricing</li>
           </ul>
-          <a href="mailto:hello@keelcat.in?subject=KeelCat%20Enterprise" className="btn-outline mt-6 w-full text-center">
+          <button onClick={() => setShowSales(true)} className="btn-outline mt-6 w-full">
             Contact sales
-          </a>
+          </button>
         </Panel>
       </div>
 
@@ -164,6 +166,8 @@ export default function Pricing({ cfg, onUpgraded }: { cfg: PublicConfig | null;
           }}
         />
       )}
+
+      {showSales && <ContactSales onClose={() => setShowSales(false)} />}
 
       {cryptoNote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">

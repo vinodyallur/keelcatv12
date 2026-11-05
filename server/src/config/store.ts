@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { currentTenantId, OWNER_TENANT } from "../auth/context.js";
 import { getAdminSettings } from "./admin.js";
+import { defaultLlmAvailable, defaultLlmExhausted } from "./default-llm.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "..", "data");
@@ -22,7 +23,7 @@ const LEGACY_CONFIG_FILE = join(DATA_DIR, "config.json");
 const LEGACY_SECRETS_FILE = join(DATA_DIR, "secrets.json");
 
 export type GitHubMode = "pat" | "app";
-export type LlmProvider = "openrouter" | "gemini" | "custom" | "disabled";
+export type LlmProvider = "openrouter" | "custom" | "disabled";
 
 export interface LlmConfig {
   provider: LlmProvider;
@@ -276,7 +277,7 @@ function defaultConfig(): AppConfig {
   return {
     github: { mode: "pat" },
     githubAccounts: [],
-    llm: { provider: "openrouter", model: "google/gemma-4-26b-a4b-it:free" },
+    llm: { provider: "openrouter", model: "meta/muse-spark-1.3" },
     settings: defaultSettings(),
     repos: [],
     providers: defaultProviders(),
@@ -534,6 +535,10 @@ export function getWebhookSecret(): string | undefined {
 /** Public (secret-free) view for the UI. */
 export function publicConfig() {
   const { config, secrets } = store();
+  const aiOn = config.llm.provider !== "disabled";
+  const defaultAvailable = defaultLlmAvailable();
+  const defaultActive = aiOn && !secrets.llmApiKey && defaultAvailable;
+  const defaultExhausted = defaultActive && defaultLlmExhausted();
   return {
     github: config.github,
     accounts: config.githubAccounts.map((a) => ({
@@ -553,6 +558,8 @@ export function publicConfig() {
     watchSources: config.watchSources,
     hasPat: Boolean(secrets.githubPat) || config.githubAccounts.some((a) => a.mode === "pat"),
     hasLlmKey: Boolean(secrets.llmApiKey),
+    llmReady: aiOn && (Boolean(secrets.llmApiKey) || (defaultActive && !defaultExhausted)),
+    aiDefault: { available: defaultAvailable, active: defaultActive, exhausted: defaultExhausted },
     hasAppKey: Boolean(secrets.githubAppPrivateKey) || config.githubAccounts.some((a) => a.mode === "app"),
     hasWebhookSecret: Boolean(secrets.githubWebhookSecret),
     hasSmtpPass: Boolean(secrets.smtpPass),

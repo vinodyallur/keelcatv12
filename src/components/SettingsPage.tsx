@@ -120,7 +120,11 @@ export default function SettingsPage({
           <h3 className="text-[14px] font-semibold text-content">Current configuration</h3>
           <div className="mt-4 grid gap-3 text-[13px]">
             <ConfigItem label="GitHub" value={cfg.github.mode === "pat" ? "Access token" : "GitHub App"} ok={cfg.hasPat || cfg.hasAppKey} />
-            <ConfigItem label="LLM" value={`${cfg.llm.provider} · ${cfg.llm.model}`} ok={cfg.hasLlmKey} />
+            <ConfigItem
+              label="LLM"
+              value={cfg.aiDefault?.active ? "KeelCat AI" : `${cfg.llm.provider} · ${cfg.llm.model}`}
+              ok={Boolean(cfg.llmReady ?? cfg.hasLlmKey)}
+            />
             <ConfigItem label="Repos selected" value={String(cfg.repos.filter((r) => r.selected).length)} ok={cfg.repos.some((r) => r.selected)} />
           </div>
         </Panel>

@@ -62,7 +62,12 @@ export const real = Router();
 real.get("/api/config", (_req, res) => res.json(publicConfig()));
 
 real.put("/api/config/llm", (req, res) => {
-  const { provider, model, baseUrl, apiKey } = req.body ?? {};
+  const { provider, model, baseUrl, apiKey, useDefault } = req.body ?? {};
+  if (useDefault === true) {
+    setSecret({ llmApiKey: undefined });
+    if (getConfig().llm.provider === "disabled") setLlmConfig({ provider: "openrouter" });
+    return res.json(publicConfig());
+  }
   if (provider || model || baseUrl !== undefined) setLlmConfig({ provider, model, baseUrl });
   if (typeof apiKey === "string" && apiKey.length) setSecret({ llmApiKey: apiKey });
   res.json(publicConfig());

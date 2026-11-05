@@ -1,30 +1,45 @@
-// Minimal OpenAI-compatible chat client. Works with OpenRouter and Google
-// Gemini (OpenAI-compat endpoint), or any custom base URL. Used only to parse
-// human changelog text into a precise, structured change spec — never to
-// silently rewrite code without validation.
+// Minimal OpenAI-compatible chat client for Meta models (Muse Spark and Llama via
+// OpenRouter by default, or any OpenAI-compatible host serving Meta open weights).
+// Turns changelog text into a structured change spec and drafts edits only where a
+// deterministic rewrite is impossible — never silently rewrites code without validation.
 
 import { getConfig, getLlmKey } from "../config/store.js";
+import { defaultLlmFor, recordDefaultLlmUse } from "../config/default-llm.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-function resolveBaseUrl(): string {
+export interface ResolvedLlm {
+  baseUrl: string;
+  model: string;
+  key: string;
+  /** The admin's default: counts toward its daily limits and hides upstream details. */
+  shared: boolean;
+}
+
+const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
+
+function baseUrlFor(baseUrl?: string): string {
+  return baseUrl ? baseUrl.replace(/\/$/, "") : META_OPENROUTER_URL;
+}
+
+/**
+ * The workspace's own provider wins. Otherwise the admin's default is used as a
+ * whole, so its key is never sent to a URL or model chosen by the workspace.
+ */
+export function resolveLlm(): ResolvedLlm | null {
   const { llm } = getConfig();
-  if (llm.baseUrl) return llm.baseUrl.replace(/\/$/, "");
-  switch (llm.provider) {
-    case "gemini":
-      return "https://generativelanguage.googleapis.com/v1beta/openai";
-    case "openrouter":
-    default:
-      return "https://openrouter.ai/api/v1";
-  }
+  if (llm.provider === "disabled") return null;
+  const own = getLlmKey();
+  if (own) return { baseUrl: baseUrlFor(llm.baseUrl), model: llm.model, key: own, shared: false };
+  const fallback = defaultLlmFor();
+  return fallback ? { ...fallback, shared: true } : null;
 }
 
 export function llmConfigured(): boolean {
-  const { llm } = getConfig();
-  return llm.provider !== "disabled" && Boolean(getLlmKey());
+  return resolveLlm() !== null;
 }
 
 export interface ChatOptions {
@@ -36,10 +51,14 @@ export interface ChatOptions {
 }
 
 export async function chat(opts: ChatOptions): Promise<string> {
-  const key = getLlmKey();
-  if (!key) throw new Error("No LLM API key configured. Add one in Settings.");
-  const { llm } = getConfig();
-  const url = `${resolveBaseUrl()}/chat/completions`;
+  const llm = resolveLlm();
+  if (!llm) throw new Error("No LLM configured. Add an API key in Connect.");
+  if (llm.shared) recordDefaultLlmUse();
+  return chatWith(llm, opts);
+}
+
+export async function chatWith(llm: ResolvedLlm, opts: ChatOptions): Promise<string> {
+  const url = `${llm.baseUrl}/chat/completions`;
 
   const body: Record<string, unknown> = {
     model: llm.model,
@@ -58,7 +77,7 @@ export async function chat(opts: ChatOptions): Promise<string> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${key}`,
+        authorization: `Bearer ${llm.key}`,
         // OpenRouter attribution headers (harmless elsewhere).
         "HTTP-Referer": "https://apisteward.local",
         "X-Title": "KeelCat",
@@ -67,6 +86,7 @@ export async function chat(opts: ChatOptions): Promise<string> {
       signal: controller.signal,
     });
   } catch (e) {
+    if (llm.shared) throw new Error("KeelCat AI is unavailable right now.");
     if ((e as Error).name === "AbortError") throw new Error("LLM request timed out.");
     throw e;
   } finally {
@@ -75,12 +95,14 @@ export async function chat(opts: ChatOptions): Promise<string> {
 
   const text = await res.text();
   if (!res.ok) {
+    if (llm.shared) throw new Error(`KeelCat AI request failed (${res.status}).`);
     throw new Error(`LLM request failed (${res.status}): ${text.slice(0, 300)}`);
   }
   let json: any;
   try {
     json = JSON.parse(text);
   } catch {
+    if (llm.shared) throw new Error("KeelCat AI returned an unreadable response.");
     throw new Error(`LLM returned non-JSON response: ${text.slice(0, 200)}`);
   }
   const content = json?.choices?.[0]?.message?.content;
@@ -121,10 +143,10 @@ export function extractJson<T = unknown>(raw: string): T {
 
 /** Quick connectivity check used by the Settings "Test" button. */
 export async function pingLlm(): Promise<{ ok: boolean; model: string; sample: string }> {
-  const { llm } = getConfig();
+  const llm = resolveLlm();
   const out = await chat({
     messages: [{ role: "user", content: "Reply with exactly the word: ok" }],
     maxTokens: 10,
   });
-  return { ok: true, model: llm.model, sample: out.trim().slice(0, 40) };
+  return { ok: true, model: llm?.shared ? "KeelCat AI" : (llm?.model ?? ""), sample: out.trim().slice(0, 40) };
 }

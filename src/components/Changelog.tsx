@@ -171,13 +171,17 @@ export default function Changelog({ onNavigate }: { onNavigate?: (view: string) 
           />
           <div className="mt-3 flex items-center gap-2">
             <button className="btn-accent" onClick={parse} disabled={parsing || !text.trim()}>
-              {parsing ? <Spinner label="Reading…" /> : cfg?.hasLlmKey ? "Parse with LLM →" : "Parse →"}
+              {parsing ? <Spinner label="Reading…" /> : (cfg?.llmReady ?? cfg?.hasLlmKey) ? "Parse with LLM →" : "Parse →"}
             </button>
             <button className="btn-outline" onClick={addManual}>Add change manually</button>
           </div>
-          {!cfg?.hasLlmKey && (
+          {!(cfg?.llmReady ?? cfg?.hasLlmKey) && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-content-faint">
-              <span>No LLM key set — using basic parsing. Set an LLM key for more accurate results.</span>
+              <span>
+                {cfg?.aiDefault?.exhausted
+                  ? "Today's KeelCat AI limit is reached — using basic parsing until tomorrow."
+                  : "No LLM key set — using basic parsing. Set an LLM key for more accurate results."}
+              </span>
               {onNavigate && (
                 <button onClick={() => onNavigate("connect")} className="shrink-0 font-medium text-accent hover:underline">
                   Set LLM key →

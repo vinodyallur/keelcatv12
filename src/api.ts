@@ -169,6 +169,9 @@ export interface PublicConfig {
   watchSources: WatchSource[];
   hasPat: boolean;
   hasLlmKey: boolean;
+  // Optional: servers without the admin default AI (e.g. the mobile shell) omit these.
+  llmReady?: boolean;
+  aiDefault?: { available: boolean; active: boolean; exhausted: boolean };
   hasAppKey: boolean;
   hasWebhookSecret: boolean;
   hasSmtpPass: boolean;
@@ -333,6 +336,35 @@ export interface AdminOverview {
   tenants: AdminTenant[];
   tenantCount: number;
 }
+export interface DefaultLlmSettings {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  forGuests: boolean;
+  forUsers: boolean;
+  dailyLimitPerWorkspace: number;
+  dailyLimitTotal: number;
+}
+export interface DefaultLlmView extends DefaultLlmSettings {
+  hasKey: boolean;
+  keyLast4: string | null;
+  usedToday: number;
+}
+export interface SalesLeadInput {
+  name: string;
+  email: string;
+  phone: string;
+  company?: string;
+  licenses: number;
+  message?: string;
+}
+export interface SalesLead extends SalesLeadInput {
+  id: string;
+  at: string;
+  tenantId: string;
+  login?: string;
+}
 export interface AuthState {
   enabled: boolean; // whether ANY login provider is configured on this server
   github: boolean; // GitHub login available
@@ -387,6 +419,7 @@ export const api = {
     setLlm: (b: { provider?: string; model?: string; baseUrl?: string; apiKey?: string }) =>
       req<PublicConfig>("/api/config/llm", "PUT", b),
     testLlm: () => req<{ ok: boolean; model: string; sample: string }>("/api/config/llm/test", "POST", {}),
+    useDefaultLlm: () => req<PublicConfig>("/api/config/llm", "PUT", { useDefault: true }),
     setGitHub: (b: {
       mode?: "pat" | "app";
       appId?: string;
@@ -487,11 +520,24 @@ export const api = {
     verify: (p: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; plan?: BillingInterval }) =>
       req<{ ok: boolean; billing: BillingInfo }>("/api/billing/verify", "POST", p),
   },
+  sales: {
+    contact: (p: SalesLeadInput) => req<{ ok: boolean }>("/api/sales/contact", "POST", p),
+  },
   admin: {
     overview: () => req<AdminOverview>("/api/admin/overview", "GET"),
     setSettings: (p: Partial<AdminSettings>) => req<AdminSettings>("/api/admin/settings", "PUT", p),
     setTenantPlan: (id: string, plan: "free" | "premium") =>
       req<{ ok: boolean; plan: string }>(`/api/admin/tenants/${encodeURIComponent(id)}/plan`, "POST", { plan }),
     deleteTenant: (id: string) => req<{ ok: boolean }>(`/api/admin/tenants/${encodeURIComponent(id)}`, "DELETE"),
+    defaultLlm: {
+      get: () => req<DefaultLlmView>("/api/admin/default-llm", "GET"),
+      save: (p: Partial<DefaultLlmSettings> & { apiKey?: string }) => req<DefaultLlmView>("/api/admin/default-llm", "PUT", p),
+      remove: () => req<DefaultLlmView>("/api/admin/default-llm", "DELETE"),
+      test: () => req<{ ok: boolean; sample: string }>("/api/admin/default-llm/test", "POST", {}),
+    },
+    salesLeads: {
+      list: () => req<SalesLead[]>("/api/admin/sales-leads", "GET"),
+      remove: (id: string) => req<{ ok: boolean }>(`/api/admin/sales-leads/${encodeURIComponent(id)}`, "DELETE"),
+    },
   },
 };

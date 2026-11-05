@@ -3,9 +3,12 @@
 // billing paywall, tune the free limit + price, and manage tenant workspaces.
 
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { listTenantIds, setPlan, deleteTenant, tenantAdminSummary } from "../config/store.js";
+import { listTenantIds, setPlan, deleteTenant, tenantAdminSummary, logAudit } from "../config/store.js";
 import { getAdminSettings, setAdminSettings, isAdminLogin } from "../config/admin.js";
 import { runWithTenant, currentContext, OWNER_TENANT } from "../auth/context.js";
+import { defaultLlmAdminView, setDefaultLlm, clearDefaultLlm, defaultLlmTarget } from "../config/default-llm.js";
+import { listSalesLeads, deleteSalesLead } from "../config/sales-leads.js";
+import { chatWith } from "../llm/client.js";
 
 export const adminRouter = Router();
 
@@ -46,4 +49,50 @@ adminRouter.delete("/api/admin/tenants/:id", guard, (req, res) => {
   if (id === OWNER_TENANT) return res.status(400).json({ error: "Cannot delete the owner workspace." });
   const ok = deleteTenant(id);
   res.json({ ok });
+});
+
+// ---- Enterprise "Contact sales" inquiries ----
+
+adminRouter.get("/api/admin/sales-leads", guard, (_req, res) => {
+  res.json(listSalesLeads());
+});
+
+adminRouter.delete("/api/admin/sales-leads/:id", guard, (req, res) => {
+  res.json({ ok: deleteSalesLead(String(req.params.id)) });
+});
+
+// ---- Default AI provider shared with chosen workspaces ----
+
+adminRouter.get("/api/admin/default-llm", guard, (_req, res) => {
+  res.json(defaultLlmAdminView());
+});
+
+adminRouter.put("/api/admin/default-llm", guard, (req, res) => {
+  try {
+    setDefaultLlm(req.body ?? {});
+  } catch (e) {
+    return res.status(400).json({ error: (e as Error).message });
+  }
+  logAudit("DEFAULT_AI_UPDATED", "Admin updated the default AI provider settings.");
+  res.json(defaultLlmAdminView());
+});
+
+adminRouter.delete("/api/admin/default-llm", guard, (_req, res) => {
+  clearDefaultLlm();
+  logAudit("DEFAULT_AI_REMOVED", "Admin removed the default AI provider and its key.");
+  res.json(defaultLlmAdminView());
+});
+
+adminRouter.post("/api/admin/default-llm/test", guard, async (_req, res) => {
+  const target = defaultLlmTarget();
+  if (!target) return res.status(400).json({ error: "Add a base URL, model and API key first." });
+  try {
+    const out = await chatWith(
+      { ...target, shared: false },
+      { messages: [{ role: "user", content: "Reply with exactly the word: ok" }], maxTokens: 10 },
+    );
+    res.json({ ok: true, sample: out.trim().slice(0, 40) });
+  } catch (e) {
+    res.status(502).json({ error: (e as Error).message });
+  }
 });
