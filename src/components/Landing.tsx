@@ -24,6 +24,39 @@ export default function Landing({ onSignIn }: { onSignIn: () => void }) {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-10">
+        {/* Meta models launch banner */}
+        <section
+          className="relative mb-5 overflow-hidden rounded-2xl border px-5 py-4 sm:px-7 sm:py-5"
+          style={{
+            borderColor: "rgba(8, 102, 255, 0.35)",
+            background: "linear-gradient(110deg, rgba(8, 102, 255, 0.16) 0%, rgba(42, 123, 255, 0.07) 50%, rgba(123, 97, 255, 0.14) 100%)",
+          }}
+        >
+          <div className="pointer-events-none absolute -right-12 -top-20 h-48 w-48 rounded-full blur-3xl" style={{ background: "rgba(8, 102, 255, 0.28)" }} />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div
+                className="flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                style={{ borderColor: "rgba(8, 102, 255, 0.4)", color: "#4d94ff" }}
+              >
+                <img src="/keelcat-icon.png" alt="" className="h-4 w-auto" />
+                KeelCat <span aria-hidden="true">×</span> Meta models
+              </div>
+              <div>
+                <div className="text-[17px] font-bold leading-snug text-content sm:text-[19px]">KeelCat now available with Meta models</div>
+                <div className="mt-0.5 text-[12px] text-content-muted">More performance, less cost. Free runs for guest users on Meta models.</div>
+              </div>
+            </div>
+            <button
+              onClick={onSignIn}
+              className="w-fit shrink-0 rounded-xl px-4 py-2 text-[13px] font-semibold text-white transition hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #0866ff, #5b6cff)" }}
+            >
+              Try it free →
+            </button>
+          </div>
+        </section>
+
         {/* Hero */}
         <section className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 sm:rounded-3xl sm:p-12">
           <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
