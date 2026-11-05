@@ -528,3 +528,31 @@ html {
 :root[data-skin="skeuo"] .switch[data-on="true"] .switch-knob {
   background: #ffffff;
 }
+
+/* KeelCat × Meta models banner: deep Meta-style blue with a slow light sweep. */
+.meta-card {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgb(77 148 255 / 0.55) 0%, transparent 55%),
+    linear-gradient(145deg, #06163d 0%, #0a3a9e 52%, #0866ff 100%);
+  border: 1px solid rgb(140 185 255 / 0.35);
+  box-shadow:
+    0 0 0 1px rgb(8 102 255 / 0.15),
+    0 20px 60px -20px rgb(8 102 255 / 0.65),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+.meta-shine {
+  pointer-events: none;
+  position: absolute;
+  inset: -50% auto -50% -60%;
+  width: 45%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent);
+  animation: meta-shine 5s ease-in-out infinite;
+}
+@keyframes meta-shine {
+  0% { left: -60%; }
+  55%, 100% { left: 130%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meta-shine { animation: none; display: none; }
+}

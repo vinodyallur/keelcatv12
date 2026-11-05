@@ -12,6 +12,7 @@ import Runs from "./components/Runs";
 import SettingsPage from "./components/SettingsPage";
 import Admin from "./components/Admin";
 import Pricing from "./components/Pricing";
+import { MetaStrip } from "./components/MetaBanner";
 
 type View = "overview" | "changelog" | "repos" | "providers" | "security" | "connect" | "runs" | "settings" | "pricing" | "admin";
 export type Skin = "modern" | "skeuo";
@@ -147,6 +148,7 @@ export default function App() {
           onMenu={() => setMobileNav(true)}
         />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+          <MetaStrip onAction={view === "changelog" ? undefined : () => navigate("changelog")} />
           {view === "overview" && <Overview cfg={cfg} go={navigate} />}
           {view === "changelog" && <Changelog onNavigate={(v) => navigate(v as View)} />}
           {view === "repos" && <Repositories />}
