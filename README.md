@@ -116,3 +116,7 @@ See [DEPLOY.md](DEPLOY.md) for Google Cloud Compute Engine and AWS instructions.
 Never commit `.env` files or `server/data/`; they hold tokens, OAuth secrets, and
 tenant data and are ignored by `.gitignore`. Keep the test sandbox disabled on
 public hosts because it executes third-party code.
+
+## Pitch deck
+
+[KeelCat pitch deck](docs/KeelCat-Pitch-Deck.pptx)
