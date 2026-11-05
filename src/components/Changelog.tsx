@@ -3,6 +3,7 @@ import { api, type ChangeSpec, type RunOutput, type ChangeKind, type ChangeImpac
 import { Panel, SectionHead, Chip, Spinner, DiffView, LangBadge, Empty, ProgressBar } from "./ui";
 import StatusMatrix from "./StatusMatrix";
 import Upgrade from "./Upgrade";
+import { MetaGuestNote } from "./MetaBanner";
 import { runStore } from "../pipeline/runStore";
 
 const KINDS: ChangeKind[] = [
@@ -30,7 +31,7 @@ function lsLoad<T>(key: string, fallback: T): T {
   }
 }
 
-export default function Changelog({ onNavigate }: { onNavigate?: (view: string) => void }) {
+export default function Changelog({ onNavigate, isGuest = false }: { onNavigate?: (view: string) => void; isGuest?: boolean }) {
   const [cfg, setCfg] = useState<PublicConfig | null>(null);
   // Persist the draft so switching nav tabs (which unmounts this view) doesn't
   // wipe what you typed / parsed / ran. Survives reloads too.
@@ -269,6 +270,7 @@ export default function Changelog({ onNavigate }: { onNavigate?: (view: string) 
               `Fix ${selectedRepos} repo${selectedRepos === 1 ? "" : "s"} & open PRs →`
             )}
           </button>
+          {isGuest && cfg?.aiDefault?.active && <MetaGuestNote model={cfg.aiDefault.modelName} />}
           {running && (
             <div className="mt-3">
               {effectiveMode === "local" && progress && progress.total > 0 ? (

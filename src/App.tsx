@@ -12,7 +12,7 @@ import Runs from "./components/Runs";
 import SettingsPage from "./components/SettingsPage";
 import Admin from "./components/Admin";
 import Pricing from "./components/Pricing";
-import { MetaStrip } from "./components/MetaBanner";
+import { MetaStrip, MetaCard } from "./components/MetaBanner";
 
 type View = "overview" | "changelog" | "repos" | "providers" | "security" | "connect" | "runs" | "settings" | "pricing" | "admin";
 export type Skin = "modern" | "skeuo";
@@ -148,9 +148,13 @@ export default function App() {
           onMenu={() => setMobileNav(true)}
         />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-          <MetaStrip onAction={view === "changelog" ? undefined : () => navigate("changelog")} />
+          {(view === "changelog" || view === "providers" || view === "connect") && (
+            <MetaStrip onAction={view === "changelog" ? undefined : () => navigate("changelog")} />
+          )}
           {view === "overview" && <Overview cfg={cfg} go={navigate} />}
-          {view === "changelog" && <Changelog onNavigate={(v) => navigate(v as View)} />}
+          {view === "changelog" && (
+            <Changelog onNavigate={(v) => navigate(v as View)} isGuest={authState?.user?.provider === "guest"} />
+          )}
           {view === "repos" && <Repositories />}
           {view === "providers" && <Providers />}
           {view === "security" && <Security />}
@@ -434,7 +438,8 @@ function Overview({ cfg, go }: { cfg: PublicConfig | null; go: (v: View) => void
       <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 sm:rounded-3xl sm:p-10">
         <div className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-violet/10 blur-3xl" />
-        <div className="relative max-w-2xl">
+        <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="max-w-2xl">
           <Chip tone="accent">production</Chip>
           <h1 className="mt-5 text-[32px] font-bold leading-[1.05] tracking-tightest sm:text-[46px] sm:leading-[1.02]">
             <span className="gradient-text">Your APIs change.</span>
@@ -450,6 +455,8 @@ function Overview({ cfg, go }: { cfg: PublicConfig | null; go: (v: View) => void
             <button className="btn-accent" onClick={() => go("changelog")}>Post a changelog →</button>
             <button className="btn-outline" onClick={() => go("connect")}>Connect GitHub</button>
           </div>
+        </div>
+        <MetaCard onAction={() => go("changelog")} actionLabel="Run a changelog →" />
         </div>
       </div>
 

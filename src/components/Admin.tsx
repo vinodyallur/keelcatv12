@@ -89,7 +89,7 @@ function DefaultAiPanel() {
         <div className="max-w-xl">
           <div className="text-[15px] font-semibold text-content">Default Meta model for users</div>
           <div className="mt-1 text-[12px] text-content-muted">
-            Workspaces without their own key use this Meta model (KeelCat AI) automatically. Users never see its URL, model or key, and can switch to their own key anytime. Only admins can change it.
+            Workspaces without their own key use this Meta model (KeelCat AI) automatically. Users see only the model name, never its URL or key, and can switch to their own key anytime. Only admins can change it.
           </div>
         </div>
         <div className="flex items-center gap-2">

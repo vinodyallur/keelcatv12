@@ -125,6 +125,16 @@ export function recordDefaultLlmUse(): void {
   usedByTenant.set(id, (usedByTenant.get(id) ?? 0) + 1);
 }
 
+/** Display name of the default model, e.g. "meta/muse-spark-1.3" -> "Muse Spark 1.3". */
+export function defaultLlmModelName(): string {
+  const id = stored.model.split("/").pop() ?? stored.model;
+  return id
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 /** The configured connection regardless of audience or limits (admin test only). */
 export function defaultLlmTarget(): DefaultLlmTarget | null {
   if (!stored.apiKey || !stored.baseUrl || !stored.model) return null;

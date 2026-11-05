@@ -171,7 +171,7 @@ export interface PublicConfig {
   hasLlmKey: boolean;
   // Optional: servers without the admin default AI (e.g. the mobile shell) omit these.
   llmReady?: boolean;
-  aiDefault?: { available: boolean; active: boolean; exhausted: boolean };
+  aiDefault?: { available: boolean; active: boolean; exhausted: boolean; modelName?: string };
   hasAppKey: boolean;
   hasWebhookSecret: boolean;
   hasSmtpPass: boolean;
