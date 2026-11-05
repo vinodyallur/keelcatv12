@@ -5,9 +5,14 @@ import { Panel, SectionHead, Chip, Switch, Spinner } from "./ui";
 const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
 const AI_PRESETS: Record<string, { label: string; baseUrl: string; model: string }> = {
   "meta-muse": { label: "Meta Muse Spark 1.3 (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3" },
+  "meta-muse-contributor": { label: "Meta Muse Spark 1.3 Contributor (OpenRouter, lowest cost)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3-contributor" },
+  "meta-muse-open": { label: "Meta Muse Spark Open (OpenRouter, coding)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-open" },
   "meta-muse-wonder": { label: "Meta Muse Wonder (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-wonder" },
+  "meta-muse-glimmer": { label: "Meta Muse Glimmer 30B (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-glimmer-30b" },
   "meta-llama-maverick": { label: "Meta Llama 4 Maverick (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-maverick" },
   "meta-llama-scout": { label: "Meta Llama 4 Scout (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-scout" },
+  "meta-llama-3.3-70b": { label: "Meta Llama 3.3 70B (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.3-70b-instruct" },
+  "meta-llama-3.1-8b": { label: "Meta Llama 3.1 8B (OpenRouter, cheapest)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.1-8b-instruct" },
   custom: { label: "Meta model on another OpenAI-compatible host", baseUrl: "", model: "" },
 };
 

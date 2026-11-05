@@ -148,8 +148,8 @@ export default function App() {
           onMenu={() => setMobileNav(true)}
         />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-          {(view === "changelog" || view === "providers" || view === "connect") && (
-            <MetaStrip onAction={view === "changelog" ? undefined : () => navigate("changelog")} />
+          {(view === "repos" || view === "providers" || view === "connect" || view === "pricing") && (
+            <MetaStrip onAction={() => navigate("changelog")} />
           )}
           {view === "overview" && <Overview cfg={cfg} go={navigate} />}
           {view === "changelog" && (

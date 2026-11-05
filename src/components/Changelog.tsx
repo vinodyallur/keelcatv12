@@ -190,6 +190,7 @@ export default function Changelog({ onNavigate, isGuest = false }: { onNavigate?
               )}
             </p>
           )}
+          {isGuest && cfg?.aiDefault?.active && <MetaGuestNote model={cfg.aiDefault.modelName} />}
         </Panel>
 
         {/* Parsed changes */}
@@ -270,7 +271,6 @@ export default function Changelog({ onNavigate, isGuest = false }: { onNavigate?
               `Fix ${selectedRepos} repo${selectedRepos === 1 ? "" : "s"} & open PRs →`
             )}
           </button>
-          {isGuest && cfg?.aiDefault?.active && <MetaGuestNote model={cfg.aiDefault.modelName} />}
           {running && (
             <div className="mt-3">
               {effectiveMode === "local" && progress && progress.total > 0 ? (

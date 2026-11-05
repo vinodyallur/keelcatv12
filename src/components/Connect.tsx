@@ -37,7 +37,7 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
   const MODEL_PRESETS: Record<string, { keyHint: string; models: string[]; baseUrl?: string; needsBaseUrl?: boolean; kind: "local" | "cloud" | "none" }> = {
     "on-device": { keyHint: "runs on this phone — no key", models: ["on-device model"], kind: "local" },
     ollama: { keyHint: "local server — no key needed", models: ["llama3.3", "llama3.2", "llama3.1"], baseUrl: "http://127.0.0.1:11434/v1", needsBaseUrl: true, kind: "local" },
-    openrouter: { keyHint: "starts with sk-or-…", models: ["meta/muse-spark-1.3", "meta/muse-wonder", "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout", "meta-llama/llama-3.3-70b-instruct"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
+    openrouter: { keyHint: "starts with sk-or-…", models: ["meta/muse-spark-1.3", "meta/muse-spark-1.3-contributor", "meta/muse-spark-open", "meta/muse-wonder", "meta/muse-glimmer-30b", "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout", "meta-llama/llama-3.3-70b-instruct", "meta-llama/llama-3.1-8b-instruct"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
     custom: { keyHint: "any OpenAI-compatible host serving Meta models", models: [], needsBaseUrl: true, kind: "cloud" },
     disabled: { keyHint: "no key needed", models: [], kind: "none" },
   };
