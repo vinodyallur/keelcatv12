@@ -89,7 +89,7 @@ adminRouter.post("/api/admin/default-llm/test", guard, async (_req, res) => {
   try {
     const out = await chatWith(
       { ...target, shared: false },
-      { messages: [{ role: "user", content: "Reply with exactly the word: ok" }], maxTokens: 10 },
+      { messages: [{ role: "user", content: "Reply with exactly the word: ok" }], maxTokens: 512 },
     );
     res.json({ ok: true, sample: out.trim().slice(0, 40) });
   } catch (e) {

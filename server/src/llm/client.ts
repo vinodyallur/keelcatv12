@@ -57,20 +57,26 @@ export async function chat(opts: ChatOptions): Promise<string> {
   return chatWith(llm, opts);
 }
 
+// Reasoning models (e.g. Meta Muse) spend part of max_tokens thinking before they answer.
+const MIN_OPENROUTER_TOKENS = 4096;
+
 export async function chatWith(llm: ResolvedLlm, opts: ChatOptions): Promise<string> {
   const url = `${llm.baseUrl}/chat/completions`;
+  const onOpenRouter = llm.baseUrl.startsWith(META_OPENROUTER_URL);
+  const maxTokens = opts.maxTokens ?? 2048;
 
   const body: Record<string, unknown> = {
     model: llm.model,
     messages: opts.messages,
     temperature: opts.temperature ?? 0,
-    max_tokens: opts.maxTokens ?? 2048,
+    max_tokens: onOpenRouter ? Math.max(maxTokens, MIN_OPENROUTER_TOKENS) : maxTokens,
   };
+  if (onOpenRouter) body.reasoning = { effort: "low", exclude: true };
   if (opts.jsonMode) body.response_format = { type: "json_object" };
 
   // Hard timeout so a slow/flaky model can never hang an entire multi-repo run.
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 30_000);
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? (onOpenRouter ? 60_000 : 30_000));
   let res: Response;
   try {
     res = await fetch(url, {
@@ -105,9 +111,20 @@ export async function chatWith(llm: ResolvedLlm, opts: ChatOptions): Promise<str
     if (llm.shared) throw new Error("KeelCat AI returned an unreadable response.");
     throw new Error(`LLM returned non-JSON response: ${text.slice(0, 200)}`);
   }
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") {
-    throw new Error("LLM response missing message content.");
+  const choice = json?.choices?.[0];
+  const raw = choice?.message?.content;
+  // Some providers return content as an array of parts instead of a string.
+  const content =
+    typeof raw === "string"
+      ? raw
+      : Array.isArray(raw)
+        ? raw.map((p: { text?: unknown }) => (typeof p?.text === "string" ? p.text : "")).join("")
+        : "";
+  if (!content.trim()) {
+    if (choice?.finish_reason === "length") {
+      throw new Error("The model used its whole token budget thinking and returned no answer. Try again, or pick a lighter model.");
+    }
+    throw new Error("The model returned an empty answer.");
   }
   return content;
 }
@@ -146,7 +163,7 @@ export async function pingLlm(): Promise<{ ok: boolean; model: string; sample: s
   const llm = resolveLlm();
   const out = await chat({
     messages: [{ role: "user", content: "Reply with exactly the word: ok" }],
-    maxTokens: 10,
+    maxTokens: 512,
   });
   return { ok: true, model: llm?.shared ? "KeelCat AI" : (llm?.model ?? ""), sample: out.trim().slice(0, 40) };
 }

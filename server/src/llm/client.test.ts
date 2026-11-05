@@ -77,3 +77,34 @@ describe("LLM resolution with an admin default", () => {
     await expect(ask()).rejects.toThrow("KeelCat AI request failed (500).");
   });
 });
+
+describe("reasoning models", () => {
+  const lastBody = () => JSON.parse(fetchMock.mock.calls[fetchMock.mock.calls.length - 1][1].body as string);
+
+  it("gives OpenRouter models room to think and asks for low reasoning effort", async () => {
+    state.shared = { baseUrl: "https://openrouter.ai/api/v1", model: "meta/muse-wonder", key: "k" };
+    await chat({ messages: [{ role: "user", content: "hi" }], maxTokens: 10 });
+    expect(lastBody()).toMatchObject({ max_tokens: 4096, reasoning: { effort: "low", exclude: true } });
+  });
+
+  it("leaves other hosts' requests unchanged", async () => {
+    await chat({ messages: [{ role: "user", content: "hi" }], maxTokens: 10 });
+    expect(lastBody().max_tokens).toBe(10);
+    expect(lastBody().reasoning).toBeUndefined();
+  });
+
+  it("explains an answer cut off by the token budget", async () => {
+    state.ownKey = "own-key";
+    fetchMock.mockImplementation(
+      async () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: null } }] }), { status: 200 }),
+    );
+    await expect(ask()).rejects.toThrow("used its whole token budget thinking");
+  });
+
+  it("accepts content returned as an array of text parts", async () => {
+    fetchMock.mockImplementation(
+      async () => new Response(JSON.stringify({ choices: [{ message: { content: [{ type: "text", text: "o" }, { type: "text", text: "k" }] } }] }), { status: 200 }),
+    );
+    await expect(ask()).resolves.toBe("ok");
+  });
+});
