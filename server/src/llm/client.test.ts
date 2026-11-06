@@ -60,6 +60,13 @@ describe("LLM resolution with an admin default", () => {
     expect(state.recordUse).not.toHaveBeenCalled();
   });
 
+  it("sends a Meta key to Meta Model API when no base URL is saved", async () => {
+    state.llm = { provider: "meta", model: "muse-spark-1.3" };
+    state.ownKey = "meta-key";
+    await ask();
+    expect(lastRequest()).toEqual({ url: "https://api.meta.ai/v1/chat/completions", auth: "Bearer meta-key", model: "muse-spark-1.3" });
+  });
+
   it("respects a workspace that turned AI off", async () => {
     state.llm = { provider: "disabled", model: "user-model" };
     expect(llmConfigured()).toBe(false);
@@ -85,6 +92,16 @@ describe("reasoning models", () => {
     state.shared = { baseUrl: "https://openrouter.ai/api/v1", model: "meta/muse-wonder", key: "k" };
     await chat({ messages: [{ role: "user", content: "hi" }], maxTokens: 10 });
     expect(lastBody()).toMatchObject({ max_tokens: 4096, reasoning: { effort: "low", exclude: true } });
+  });
+
+  it("uses Meta Model API's own reasoning and token parameters", async () => {
+    state.shared = { baseUrl: "https://api.meta.ai/v1", model: "muse-wonder-1.0", key: "k" };
+    await chat({ messages: [{ role: "user", content: "hi" }], temperature: 0, maxTokens: 10 });
+    const body = lastBody();
+    expect(body).toMatchObject({ model: "muse-wonder-1.0", max_completion_tokens: 4096, reasoning_effort: "low" });
+    expect(body.max_tokens).toBeUndefined();
+    expect(body.temperature).toBeUndefined();
+    expect(body.reasoning).toBeUndefined();
   });
 
   it("leaves other hosts' requests unchanged", async () => {

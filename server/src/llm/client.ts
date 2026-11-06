@@ -1,9 +1,9 @@
-// Minimal OpenAI-compatible chat client for Meta models (Muse Spark and Llama via
-// OpenRouter by default, or any OpenAI-compatible host serving Meta open weights).
+// Minimal OpenAI-compatible chat client for Meta models: Muse on Meta Model API, Muse and
+// Llama via OpenRouter (the default), or any OpenAI-compatible host serving Meta open weights.
 // Turns changelog text into a structured change spec and drafts edits only where a
 // deterministic rewrite is impossible — never silently rewrites code without validation.
 
-import { getConfig, getLlmKey } from "../config/store.js";
+import { getConfig, getLlmKey, type LlmConfig } from "../config/store.js";
 import { defaultLlmFor, recordDefaultLlmUse } from "../config/default-llm.js";
 
 export interface ChatMessage {
@@ -20,9 +20,11 @@ export interface ResolvedLlm {
 }
 
 const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
+const META_API_URL = "https://api.meta.ai/v1";
 
-function baseUrlFor(baseUrl?: string): string {
-  return baseUrl ? baseUrl.replace(/\/$/, "") : META_OPENROUTER_URL;
+function baseUrlFor(llm: LlmConfig): string {
+  if (llm.baseUrl) return llm.baseUrl.replace(/\/$/, "");
+  return llm.provider === "meta" ? META_API_URL : META_OPENROUTER_URL;
 }
 
 /**
@@ -33,7 +35,7 @@ export function resolveLlm(): ResolvedLlm | null {
   const { llm } = getConfig();
   if (llm.provider === "disabled") return null;
   const own = getLlmKey();
-  if (own) return { baseUrl: baseUrlFor(llm.baseUrl), model: llm.model, key: own, shared: false };
+  if (own) return { baseUrl: baseUrlFor(llm), model: llm.model, key: own, shared: false };
   const fallback = defaultLlmFor();
   return fallback ? { ...fallback, shared: true } : null;
 }
@@ -57,26 +59,32 @@ export async function chat(opts: ChatOptions): Promise<string> {
   return chatWith(llm, opts);
 }
 
-// Reasoning models (e.g. Meta Muse) spend part of max_tokens thinking before they answer.
-const MIN_OPENROUTER_TOKENS = 4096;
+// Reasoning models (e.g. Meta Muse) spend part of the output budget thinking before they answer.
+const MIN_REASONING_TOKENS = 4096;
 
 export async function chatWith(llm: ResolvedLlm, opts: ChatOptions): Promise<string> {
   const url = `${llm.baseUrl}/chat/completions`;
   const onOpenRouter = llm.baseUrl.startsWith(META_OPENROUTER_URL);
+  const onMetaApi = llm.baseUrl.startsWith(META_API_URL);
+  const reasoningHost = onOpenRouter || onMetaApi;
   const maxTokens = opts.maxTokens ?? 2048;
+  const budget = reasoningHost ? Math.max(maxTokens, MIN_REASONING_TOKENS) : maxTokens;
 
-  const body: Record<string, unknown> = {
-    model: llm.model,
-    messages: opts.messages,
-    temperature: opts.temperature ?? 0,
-    max_tokens: onOpenRouter ? Math.max(maxTokens, MIN_OPENROUTER_TOKENS) : maxTokens,
-  };
+  const body: Record<string, unknown> = { model: llm.model, messages: opts.messages };
+  if (onMetaApi) {
+    // Meta tunes Muse for its default temperature, so it is left unset.
+    body.max_completion_tokens = budget;
+    body.reasoning_effort = "low";
+  } else {
+    body.temperature = opts.temperature ?? 0;
+    body.max_tokens = budget;
+  }
   if (onOpenRouter) body.reasoning = { effort: "low", exclude: true };
   if (opts.jsonMode) body.response_format = { type: "json_object" };
 
   // Hard timeout so a slow/flaky model can never hang an entire multi-repo run.
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? (onOpenRouter ? 60_000 : 30_000));
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? (reasoningHost ? 60_000 : 30_000));
   let res: Response;
   try {
     res = await fetch(url, {

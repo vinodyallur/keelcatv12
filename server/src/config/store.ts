@@ -23,7 +23,7 @@ const LEGACY_CONFIG_FILE = join(DATA_DIR, "config.json");
 const LEGACY_SECRETS_FILE = join(DATA_DIR, "secrets.json");
 
 export type GitHubMode = "pat" | "app";
-export type LlmProvider = "openrouter" | "custom" | "disabled";
+export type LlmProvider = "meta" | "openrouter" | "custom" | "disabled";
 
 export interface LlmConfig {
   provider: LlmProvider;

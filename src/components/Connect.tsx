@@ -34,19 +34,20 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
   const [llmKey, setLlmKey] = useState("");
   const [llmTest, setLlmTest] = useState<string | null>(null);
 
-  const MODEL_PRESETS: Record<string, { keyHint: string; models: string[]; baseUrl?: string; needsBaseUrl?: boolean; kind: "local" | "cloud" | "none" }> = {
+  const MODEL_PRESETS: Record<string, { keyHint: string; models: string[]; defaultModel?: string; baseUrl?: string; needsBaseUrl?: boolean; kind: "local" | "cloud" | "none" }> = {
     "on-device": { keyHint: "runs on this phone — no key", models: ["on-device model"], kind: "local" },
     ollama: { keyHint: "local server — no key needed", models: ["llama3.3", "llama3.2", "llama3.1"], baseUrl: "http://127.0.0.1:11434/v1", needsBaseUrl: true, kind: "local" },
+    meta: { keyHint: "from dev.meta.ai → API keys", models: ["muse-wonder-1.0", "muse-spark-1.3", "muse-spark-1.3-contributor", "muse-spark-1.2", "muse-spark-1.2-contributor", "muse-spark-1.1"], defaultModel: "muse-spark-1.3", baseUrl: "https://api.meta.ai/v1", kind: "cloud" },
     openrouter: { keyHint: "starts with sk-or-…", models: ["meta/muse-spark-1.3", "meta/muse-spark-1.3-contributor", "meta/muse-spark-open", "meta/muse-wonder", "meta/muse-glimmer-30b", "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout", "meta-llama/llama-3.3-70b-instruct", "meta-llama/llama-3.1-8b-instruct"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
     custom: { keyHint: "any OpenAI-compatible host serving Meta models", models: [], needsBaseUrl: true, kind: "cloud" },
     disabled: { keyHint: "no key needed", models: [], kind: "none" },
   };
-  const showBaseUrl = ["ollama", "openrouter", "custom"].includes(llmProvider);
+  const showBaseUrl = ["ollama", "meta", "openrouter", "custom"].includes(llmProvider);
 
   function changeProvider(p: string) {
     setLlmProvider(p);
     const preset = MODEL_PRESETS[p];
-    if (preset?.models[0]) setLlmModel(preset.models[0]);
+    if (preset?.models[0]) setLlmModel(preset.defaultModel ?? preset.models[0]);
     setLlmBaseUrl(preset?.baseUrl ?? "");
   }
 
@@ -490,7 +491,7 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
         <p className="mt-1 text-[12px] text-content-faint">
           Turns a human changelog into a precise change list with Meta models. Run <b>Meta Llama</b> locally
           (on-device, or Ollama on your machine — private, no key) or <b>Meta Muse Spark / Llama 4</b> in the cloud
-          (OpenRouter or any OpenAI-compatible Meta host). Deterministic parsing always backs up the model.
+          (Meta Model API, OpenRouter or any OpenAI-compatible Meta host). Deterministic parsing always backs up the model.
         </p>
         {cfg?.aiDefault?.active && (
           <div className="mt-3 rounded-xl border border-accent/30 bg-accent-soft p-3 text-[12px] leading-relaxed text-content">
@@ -523,6 +524,7 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
                 <option value="ollama">Ollama: Meta Llama (local server)</option>
               </optgroup>
               <optgroup label="Cloud (Meta models)">
+                <option value="meta">Meta Model API: Muse (direct)</option>
                 <option value="openrouter">Meta Muse / Llama via OpenRouter</option>
                 <option value="custom">Meta model on another host (OpenAI-compatible)</option>
               </optgroup>
@@ -571,6 +573,11 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
               </button>
             ))}
           </div>
+        )}
+        {llmProvider === "meta" && (
+          <p className="mt-1.5 text-[11px] text-content-faint">
+            Strongest first. Muse Wonder is the most capable; Muse Spark 1.3 is the best value. Contributor models cost much less, but Meta may use your prompts to train its models.
+          </p>
         )}
         <div className="mt-3 flex items-center gap-3">
           <button className="btn-outline" onClick={saveLlm}>Save & test</button>

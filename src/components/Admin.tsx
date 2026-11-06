@@ -2,18 +2,28 @@ import { useEffect, useState } from "react";
 import { api, type AdminOverview, type AdminSettings, type DefaultLlmView, type SalesLead } from "../api";
 import { Panel, SectionHead, Chip, Switch, Spinner } from "./ui";
 
+const META_API_URL = "https://api.meta.ai/v1";
 const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
-const AI_PRESETS: Record<string, { label: string; baseUrl: string; model: string }> = {
-  "meta-muse": { label: "Meta Muse Spark 1.3 (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3" },
-  "meta-muse-contributor": { label: "Meta Muse Spark 1.3 Contributor (OpenRouter, lowest cost)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3-contributor" },
-  "meta-muse-open": { label: "Meta Muse Spark Open (OpenRouter, coding)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-open" },
-  "meta-muse-wonder": { label: "Meta Muse Wonder (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-wonder" },
-  "meta-muse-glimmer": { label: "Meta Muse Glimmer 30B (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-glimmer-30b" },
-  "meta-llama-maverick": { label: "Meta Llama 4 Maverick (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-maverick" },
-  "meta-llama-scout": { label: "Meta Llama 4 Scout (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-scout" },
-  "meta-llama-3.3-70b": { label: "Meta Llama 3.3 70B (OpenRouter)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.3-70b-instruct" },
-  "meta-llama-3.1-8b": { label: "Meta Llama 3.1 8B (OpenRouter, cheapest)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.1-8b-instruct" },
-  custom: { label: "Meta model on another OpenAI-compatible host", baseUrl: "", model: "" },
+const META_API = "Meta Model API (dev.meta.ai key), strongest first";
+const OPENROUTER = "OpenRouter (sk-or- key)";
+const OTHER = "Other";
+const AI_PRESETS: Record<string, { group: string; label: string; baseUrl: string; model: string }> = {
+  "meta-api-wonder": { group: META_API, label: "Muse Wonder 1.0 (most capable, $4 / $20)", baseUrl: META_API_URL, model: "muse-wonder-1.0" },
+  "meta-api-spark-1.3": { group: META_API, label: "Muse Spark 1.3 (recommended, $1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.3" },
+  "meta-api-spark-1.3-contributor": { group: META_API, label: "Muse Spark 1.3 Contributor ($0.10 / $0.20, Meta may train on prompts)", baseUrl: META_API_URL, model: "muse-spark-1.3-contributor" },
+  "meta-api-spark-1.2": { group: META_API, label: "Muse Spark 1.2 ($1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.2" },
+  "meta-api-spark-1.2-contributor": { group: META_API, label: "Muse Spark 1.2 Contributor ($0.10 / $0.20, Meta may train on prompts)", baseUrl: META_API_URL, model: "muse-spark-1.2-contributor" },
+  "meta-api-spark-1.1": { group: META_API, label: "Muse Spark 1.1 (oldest, $1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.1" },
+  "meta-muse": { group: OPENROUTER, label: "Meta Muse Spark 1.3", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3" },
+  "meta-muse-contributor": { group: OPENROUTER, label: "Meta Muse Spark 1.3 Contributor (lowest cost)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3-contributor" },
+  "meta-muse-open": { group: OPENROUTER, label: "Meta Muse Spark Open (coding)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-open" },
+  "meta-muse-wonder": { group: OPENROUTER, label: "Meta Muse Wonder", baseUrl: META_OPENROUTER_URL, model: "meta/muse-wonder" },
+  "meta-muse-glimmer": { group: OPENROUTER, label: "Meta Muse Glimmer 30B", baseUrl: META_OPENROUTER_URL, model: "meta/muse-glimmer-30b" },
+  "meta-llama-maverick": { group: OPENROUTER, label: "Meta Llama 4 Maverick", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-maverick" },
+  "meta-llama-scout": { group: OPENROUTER, label: "Meta Llama 4 Scout", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-scout" },
+  "meta-llama-3.3-70b": { group: OPENROUTER, label: "Meta Llama 3.3 70B", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.3-70b-instruct" },
+  "meta-llama-3.1-8b": { group: OPENROUTER, label: "Meta Llama 3.1 8B (cheapest)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.1-8b-instruct" },
+  custom: { group: OTHER, label: "Meta model on another OpenAI-compatible host", baseUrl: "", model: "" },
 };
 
 // Save and Test both work with the switch off, so say when nobody gets the default yet.
@@ -114,8 +124,14 @@ function DefaultAiPanel() {
               setDraft({ ...draft, provider: e.target.value, baseUrl: p?.baseUrl ?? draft.baseUrl, model: p?.model || draft.model });
             }}
           >
-            {Object.entries(AI_PRESETS).map(([key, p]) => (
-              <option key={key} value={key}>{p.label}</option>
+            {[META_API, OPENROUTER, OTHER].map((group) => (
+              <optgroup key={group} label={group}>
+                {Object.entries(AI_PRESETS)
+                  .filter(([, p]) => p.group === group)
+                  .map(([key, p]) => (
+                    <option key={key} value={key}>{p.label}</option>
+                  ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -146,6 +162,11 @@ function DefaultAiPanel() {
         {draft.provider === "custom" && (
           <span className="mt-1 block text-[11px] text-content-faint">
             Use the OpenAI-compatible URL of the host serving your Meta model, for example Meta Model API, Fireworks, Baseten or Modal. This server must be able to reach it.
+          </span>
+        )}
+        {AI_PRESETS[draft.provider]?.group === META_API && (
+          <span className="mt-1 block text-[11px] text-content-faint">
+            Bills your Meta Model API credits. Create a key at dev.meta.ai → API keys. Prices are input / output per 1M tokens; Contributor models are much cheaper, but Meta may use the prompts (users' changelogs and code) to train its models.
           </span>
         )}
       </label>
