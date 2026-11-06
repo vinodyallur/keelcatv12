@@ -23,7 +23,7 @@ function MetaMark({ size }: { size: "lg" | "sm" | "xs" }) {
   );
 }
 
-const MODELS = ["Muse Spark 1.3", "Llama 4 Maverick", "Llama 4 Scout"];
+const MODELS = ["Muse Wonder 1.0", "Muse Spark 1.3", "Llama 4 Maverick", "Llama 4 Scout"];
 
 /** Shown to guests under the Run button while the default Meta model covers them. */
 export function MetaGuestNote({ model }: { model?: string }) {
