@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { currentTenantId, OWNER_TENANT } from "../auth/context.js";
 import { getAdminSettings } from "./admin.js";
-import { defaultLlmAvailable, defaultLlmExhausted, defaultLlmModelName } from "./default-llm.js";
+import { defaultLlmAvailable, defaultLlmExhausted, defaultLlmIsMeta, defaultLlmModelName } from "./default-llm.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "..", "data");
@@ -563,7 +563,7 @@ export function publicConfig() {
       available: defaultAvailable,
       active: defaultActive,
       exhausted: defaultExhausted,
-      modelName: defaultActive ? defaultLlmModelName() : undefined,
+      modelName: defaultActive && defaultLlmIsMeta() ? defaultLlmModelName() : undefined,
     },
     hasAppKey: Boolean(secrets.githubAppPrivateKey) || config.githubAccounts.some((a) => a.mode === "app"),
     hasWebhookSecret: Boolean(secrets.githubWebhookSecret),

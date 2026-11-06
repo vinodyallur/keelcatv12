@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api, type PublicConfig, type ConnectedRepo, type CreatedRepo } from "../api";
 import { Panel, SectionHead, Chip, Spinner, LangBadge, Switch } from "./ui";
+import { HOSTS, ModelSelects } from "./ModelPicker";
+
+const LABEL = "mb-1.5 block text-[12px] font-medium text-content";
 
 export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => void }) {
   const [cfg, setCfg] = useState<PublicConfig | null>(null);
@@ -34,21 +37,13 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
   const [llmKey, setLlmKey] = useState("");
   const [llmTest, setLlmTest] = useState<string | null>(null);
 
-  const MODEL_PRESETS: Record<string, { keyHint: string; models: string[]; defaultModel?: string; baseUrl?: string; needsBaseUrl?: boolean; kind: "local" | "cloud" | "none" }> = {
-    "on-device": { keyHint: "runs on this phone — no key", models: ["on-device model"], kind: "local" },
-    ollama: { keyHint: "local server — no key needed", models: ["llama3.3", "llama3.2", "llama3.1"], baseUrl: "http://127.0.0.1:11434/v1", needsBaseUrl: true, kind: "local" },
-    meta: { keyHint: "from dev.meta.ai → API keys", models: ["muse-wonder-1.0", "muse-spark-1.3", "muse-spark-1.3-contributor", "muse-spark-1.2", "muse-spark-1.2-contributor", "muse-spark-1.1"], defaultModel: "muse-spark-1.3", baseUrl: "https://api.meta.ai/v1", kind: "cloud" },
-    openrouter: { keyHint: "starts with sk-or-…", models: ["meta/muse-spark-1.3", "meta/muse-spark-1.3-contributor", "meta/muse-spark-open", "meta/muse-wonder", "meta/muse-glimmer-30b", "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout", "meta-llama/llama-3.3-70b-instruct", "meta-llama/llama-3.1-8b-instruct"], baseUrl: "https://openrouter.ai/api/v1", kind: "cloud" },
-    custom: { keyHint: "any OpenAI-compatible host serving Meta models", models: [], needsBaseUrl: true, kind: "cloud" },
-    disabled: { keyHint: "no key needed", models: [], kind: "none" },
-  };
-  const showBaseUrl = ["ollama", "meta", "openrouter", "custom"].includes(llmProvider);
+  const showBaseUrl = llmProvider !== "on-device" && llmProvider !== "disabled";
 
   function changeProvider(p: string) {
     setLlmProvider(p);
-    const preset = MODEL_PRESETS[p];
-    if (preset?.models[0]) setLlmModel(preset.defaultModel ?? preset.models[0]);
-    setLlmBaseUrl(preset?.baseUrl ?? "");
+    const host = HOSTS[p];
+    if (host?.defaultModel) setLlmModel(host.defaultModel);
+    setLlmBaseUrl(host?.baseUrl ?? "");
   }
 
   const [repos, setRepos] = useState<ConnectedRepo[]>([]);
@@ -489,9 +484,9 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
           )}
         </div>
         <p className="mt-1 text-[12px] text-content-faint">
-          Turns a human changelog into a precise change list with Meta models. Run <b>Meta Llama</b> locally
-          (on-device, or Ollama on your machine — private, no key) or <b>Meta Muse Spark / Llama 4</b> in the cloud
-          (Meta Model API, OpenRouter or any OpenAI-compatible Meta host). Deterministic parsing always backs up the model.
+          Turns a human changelog into a precise change list. Meta models are the default: <b>Muse</b> on Meta Model API,
+          any <b>OpenRouter</b> model (Meta, Google, NVIDIA and more), or a <b>local</b> model through Ollama or on-device
+          (private, no key). Deterministic parsing always backs up the model.
         </p>
         {cfg?.aiDefault?.active && (
           <div className="mt-3 rounded-xl border border-accent/30 bg-accent-soft p-3 text-[12px] leading-relaxed text-content">
@@ -508,75 +503,61 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
           </div>
         )}
         <div className="mt-3 flex items-center gap-2">
-          <Chip tone={MODEL_PRESETS[llmProvider]?.kind === "cloud" ? "sky" : "accent"}>
-            {MODEL_PRESETS[llmProvider]?.kind === "cloud" ? "☁ cloud" : MODEL_PRESETS[llmProvider]?.kind === "local" ? "⌂ local" : "○ off"}
+          <Chip tone={HOSTS[llmProvider]?.kind === "cloud" ? "sky" : "accent"}>
+            {HOSTS[llmProvider]?.kind === "cloud" ? "☁ cloud" : HOSTS[llmProvider]?.kind === "local" ? "⌂ local" : "○ off"}
           </Chip>
           <span className="text-[11px] text-content-faint">
             {llmProvider === "on-device" ? "Model runs on the phone's CPU." : llmProvider === "ollama" ? "Runs on your computer via Ollama." : llmProvider === "disabled" ? "No LLM — pattern-based parsing only." : "Runs in the cloud."}
           </span>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-content">Provider</label>
+          <label className="block">
+            <span className={LABEL}>Provider</span>
             <select className="field" value={llmProvider} onChange={(e) => changeProvider(e.target.value)}>
-              <optgroup label="Local (private, on-device / your machine)">
-                <option value="on-device">On-device (phone)</option>
-                <option value="ollama">Ollama: Meta Llama (local server)</option>
+              <optgroup label="Cloud">
+                {["meta", "openrouter", "custom"].map((h) => (
+                  <option key={h} value={h}>{HOSTS[h].label}</option>
+                ))}
               </optgroup>
-              <optgroup label="Cloud (Meta models)">
-                <option value="meta">Meta Model API: Muse (direct)</option>
-                <option value="openrouter">Meta Muse / Llama via OpenRouter</option>
-                <option value="custom">Meta model on another host (OpenAI-compatible)</option>
+              <optgroup label="Local (private, your machine or phone)">
+                {["ollama", "on-device"].map((h) => (
+                  <option key={h} value={h}>{HOSTS[h].label}</option>
+                ))}
               </optgroup>
-              <option value="disabled">Disabled (manual changes only)</option>
+              <option value="disabled">{HOSTS.disabled.label}</option>
             </select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-content">Model</label>
-            <input className="field" value={llmModel} onChange={(e) => setLlmModel(e.target.value)} placeholder="pick a preset →" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-content">
-              API key <span className="text-content-faint">({MODEL_PRESETS[llmProvider]?.keyHint})</span>
-            </label>
-            <input type="password" className="field" value={llmKey} onChange={(e) => setLlmKey(e.target.value)}
-              disabled={llmProvider === "on-device" || llmProvider === "ollama" || llmProvider === "disabled"}
-              placeholder={cfg?.hasLlmKey ? "•••••• (saved)" : "paste key"} />
-          </div>
+          </label>
+          <ModelSelects host={llmProvider} model={llmModel} onModel={setLlmModel} labelClass={LABEL} />
         </div>
-        {showBaseUrl && (
-          <div className="mt-4">
-            <label className="mb-1.5 block text-[12px] font-medium text-content">
-              Base URL <span className="text-content-faint">(OpenAI-compatible endpoint)</span>
+        {llmProvider !== "disabled" && (
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <label className="block">
+              <span className={LABEL}>Model ID</span>
+              <input className="field font-mono text-[12px]" value={llmModel} onChange={(e) => setLlmModel(e.target.value)} placeholder="vendor/model" />
             </label>
-            <input className="field font-mono text-[12px]" value={llmBaseUrl} onChange={(e) => setLlmBaseUrl(e.target.value)}
-              placeholder="http://127.0.0.1:11434/v1" />
-            {llmProvider === "ollama" && (
-              <p className="mt-1.5 text-[11px] text-content-faint">
-                Run Ollama on your computer, then expose it to the phone with <code className="font-mono">adb reverse tcp:11434 tcp:11434</code> and use <code className="font-mono">http://127.0.0.1:11434/v1</code>.
-              </p>
+            <label className="block">
+              <span className={LABEL}>
+                API key <span className="text-content-faint">({HOSTS[llmProvider]?.keyHint})</span>
+              </span>
+              <input type="password" className="field" value={llmKey} onChange={(e) => setLlmKey(e.target.value)}
+                disabled={llmProvider === "on-device" || llmProvider === "ollama"}
+                placeholder={cfg?.hasLlmKey ? "•••••• (saved)" : "paste key"} />
+            </label>
+            {showBaseUrl && (
+              <label className="block">
+                <span className={LABEL}>
+                  Base URL <span className="text-content-faint">(OpenAI-compatible)</span>
+                </span>
+                <input className="field font-mono text-[12px]" value={llmBaseUrl} onChange={(e) => setLlmBaseUrl(e.target.value)}
+                  placeholder="https://host/v1" />
+              </label>
             )}
           </div>
         )}
-        {MODEL_PRESETS[llmProvider]?.models.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-content-faint">models:</span>
-            {MODEL_PRESETS[llmProvider].models.map((m) => (
-              <button
-                key={m}
-                onClick={() => setLlmModel(m)}
-                className={`rounded-lg border px-2.5 py-1 font-mono text-[11px] transition-all ${
-                  llmModel === m ? "border-accent/50 bg-accent-soft text-accent" : "border-line bg-white/[0.02] text-content-muted hover:text-content"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
-        {llmProvider === "meta" && (
+        {HOSTS[llmProvider]?.note && <p className="mt-2 text-[11px] text-content-faint">{HOSTS[llmProvider].note}</p>}
+        {llmProvider === "ollama" && (
           <p className="mt-1.5 text-[11px] text-content-faint">
-            Strongest first. Muse Wonder is the most capable; Muse Spark 1.3 is the best value. Contributor models cost much less, but Meta may use your prompts to train its models.
+            On the phone app, expose Ollama with <code className="font-mono">adb reverse tcp:11434 tcp:11434</code> and use <code className="font-mono">http://127.0.0.1:11434/v1</code>.
           </p>
         )}
         <div className="mt-3 flex items-center gap-3">

@@ -45,6 +45,7 @@ import {
 } from "../integrations/github.js";
 import { tokenForRepo } from "../integrations/credentials.js";
 import { pingLlm, llmConfigured } from "../llm/client.js";
+import { openRouterModels } from "../llm/catalog.js";
 import { parseChangelog, type ChangeSpec } from "../llm/changelog.js";
 import { runChanges, summarizeRunResults } from "../pipeline/run.js";
 import { createTestRepos } from "../testkit/create.js";
@@ -71,6 +72,14 @@ real.put("/api/config/llm", (req, res) => {
   if (provider || model || baseUrl !== undefined) setLlmConfig({ provider, model, baseUrl });
   if (typeof apiKey === "string" && apiKey.length) setSecret({ llmApiKey: apiKey });
   res.json(publicConfig());
+});
+
+real.get("/api/llm/openrouter-models", async (_req, res) => {
+  try {
+    res.json(await openRouterModels());
+  } catch (e) {
+    res.status(502).json({ error: (e as Error).message });
+  }
 });
 
 real.post("/api/config/llm/test", async (_req, res) => {

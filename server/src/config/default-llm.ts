@@ -135,6 +135,11 @@ export function defaultLlmModelName(): string {
     .join(" ");
 }
 
+/** Whether the default is a Meta model (Muse or Llama), on any host. */
+export function defaultLlmIsMeta(): boolean {
+  return /(^|\/)(meta|muse|llama)/i.test(stored.model);
+}
+
 /** The configured connection regardless of audience or limits (admin test only). */
 export function defaultLlmTarget(): DefaultLlmTarget | null {
   if (!stored.apiKey || !stored.baseUrl || !stored.model) return null;

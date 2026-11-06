@@ -351,6 +351,15 @@ export interface DefaultLlmView extends DefaultLlmSettings {
   keyLast4: string | null;
   usedToday: number;
 }
+/** One OpenRouter model; prices are USD per 1M tokens, null when they vary. */
+export interface CatalogModel {
+  id: string;
+  vendor: string;
+  name: string;
+  input: number | null;
+  output: number | null;
+  retires?: string;
+}
 export interface SalesLeadInput {
   name: string;
   email: string;
@@ -434,6 +443,9 @@ export const api = {
     testEmail: () => req<{ ok: boolean; to: string }>("/api/config/email/test", "POST", {}),
     setSlack: (b: { enabled?: boolean; webhookUrl?: string }) => req<PublicConfig>("/api/config/slack", "PUT", b),
     testSlack: () => req<{ ok: boolean }>("/api/config/slack/test", "POST", {}),
+  },
+  llm: {
+    openRouterModels: () => req<CatalogModel[]>("/api/llm/openrouter-models", "GET"),
   },
   github: {
     connect: (pat: string, name?: string) =>

@@ -190,7 +190,7 @@ export default function Changelog({ onNavigate, isGuest = false }: { onNavigate?
               )}
             </p>
           )}
-          {isGuest && cfg?.aiDefault?.active && <MetaGuestNote model={cfg.aiDefault.modelName} />}
+          {isGuest && cfg?.aiDefault?.modelName && <MetaGuestNote model={cfg.aiDefault.modelName} />}
         </Panel>
 
         {/* Parsed changes */}

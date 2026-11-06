@@ -1,30 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, type AdminOverview, type AdminSettings, type DefaultLlmView, type SalesLead } from "../api";
 import { Panel, SectionHead, Chip, Switch, Spinner } from "./ui";
+import { HOSTS, ModelSelects, hostOf } from "./ModelPicker";
 
-const META_API_URL = "https://api.meta.ai/v1";
-const META_OPENROUTER_URL = "https://openrouter.ai/api/v1";
-const META_API = "Meta Model API (dev.meta.ai key), strongest first";
-const OPENROUTER = "OpenRouter (sk-or- key)";
-const OTHER = "Other";
-const AI_PRESETS: Record<string, { group: string; label: string; baseUrl: string; model: string }> = {
-  "meta-api-wonder": { group: META_API, label: "Muse Wonder 1.0 (most capable, $4 / $20)", baseUrl: META_API_URL, model: "muse-wonder-1.0" },
-  "meta-api-spark-1.3": { group: META_API, label: "Muse Spark 1.3 (recommended, $1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.3" },
-  "meta-api-spark-1.3-contributor": { group: META_API, label: "Muse Spark 1.3 Contributor ($0.10 / $0.20, Meta may train on prompts)", baseUrl: META_API_URL, model: "muse-spark-1.3-contributor" },
-  "meta-api-spark-1.2": { group: META_API, label: "Muse Spark 1.2 ($1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.2" },
-  "meta-api-spark-1.2-contributor": { group: META_API, label: "Muse Spark 1.2 Contributor ($0.10 / $0.20, Meta may train on prompts)", baseUrl: META_API_URL, model: "muse-spark-1.2-contributor" },
-  "meta-api-spark-1.1": { group: META_API, label: "Muse Spark 1.1 (oldest, $1.25 / $4.25)", baseUrl: META_API_URL, model: "muse-spark-1.1" },
-  "meta-muse": { group: OPENROUTER, label: "Meta Muse Spark 1.3", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3" },
-  "meta-muse-contributor": { group: OPENROUTER, label: "Meta Muse Spark 1.3 Contributor (lowest cost)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-1.3-contributor" },
-  "meta-muse-open": { group: OPENROUTER, label: "Meta Muse Spark Open (coding)", baseUrl: META_OPENROUTER_URL, model: "meta/muse-spark-open" },
-  "meta-muse-wonder": { group: OPENROUTER, label: "Meta Muse Wonder", baseUrl: META_OPENROUTER_URL, model: "meta/muse-wonder" },
-  "meta-muse-glimmer": { group: OPENROUTER, label: "Meta Muse Glimmer 30B", baseUrl: META_OPENROUTER_URL, model: "meta/muse-glimmer-30b" },
-  "meta-llama-maverick": { group: OPENROUTER, label: "Meta Llama 4 Maverick", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-maverick" },
-  "meta-llama-scout": { group: OPENROUTER, label: "Meta Llama 4 Scout", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-4-scout" },
-  "meta-llama-3.3-70b": { group: OPENROUTER, label: "Meta Llama 3.3 70B", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.3-70b-instruct" },
-  "meta-llama-3.1-8b": { group: OPENROUTER, label: "Meta Llama 3.1 8B (cheapest)", baseUrl: META_OPENROUTER_URL, model: "meta-llama/llama-3.1-8b-instruct" },
-  custom: { group: OTHER, label: "Meta model on another OpenAI-compatible host", baseUrl: "", model: "" },
-};
+const ADMIN_HOSTS = ["meta", "openrouter", "custom"];
+const LABEL = "mb-1 block text-[12px] font-medium text-content-muted";
 
 // Save and Test both work with the switch off, so say when nobody gets the default yet.
 function offReason(v: DefaultLlmView): string | null {
@@ -49,7 +29,7 @@ function DefaultAiPanel() {
 
   function apply(v: DefaultLlmView) {
     setView(v);
-    setDraft(v.baseUrl ? v : { ...v, baseUrl: AI_PRESETS[v.provider]?.baseUrl ?? "" });
+    setDraft({ ...v, provider: hostOf(v.baseUrl) });
     setApiKey("");
   }
 
@@ -115,61 +95,51 @@ function DefaultAiPanel() {
 
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="text-[12px] font-medium text-content-muted">Provider</span>
+          <span className={LABEL}>Provider</span>
           <select
-            className="field mt-1"
+            className="field"
             value={draft.provider}
             onChange={(e) => {
-              const p = AI_PRESETS[e.target.value];
-              setDraft({ ...draft, provider: e.target.value, baseUrl: p?.baseUrl ?? draft.baseUrl, model: p?.model || draft.model });
+              const host = HOSTS[e.target.value];
+              setDraft({ ...draft, provider: e.target.value, baseUrl: host.baseUrl ?? "", model: host.defaultModel ?? draft.model });
             }}
           >
-            {[META_API, OPENROUTER, OTHER].map((group) => (
-              <optgroup key={group} label={group}>
-                {Object.entries(AI_PRESETS)
-                  .filter(([, p]) => p.group === group)
-                  .map(([key, p]) => (
-                    <option key={key} value={key}>{p.label}</option>
-                  ))}
-              </optgroup>
+            {ADMIN_HOSTS.map((h) => (
+              <option key={h} value={h}>{HOSTS[h].label}</option>
             ))}
           </select>
         </label>
+        <ModelSelects host={draft.provider} model={draft.model} onModel={(model) => setDraft({ ...draft, model })} labelClass={LABEL} />
+      </div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="text-[12px] font-medium text-content-muted">Model</span>
-          <input className="field mt-1" value={draft.model} placeholder="auto" onChange={(e) => setDraft({ ...draft, model: e.target.value })} />
+          <span className={LABEL}>Model ID</span>
+          <input className="field font-mono text-[12px]" value={draft.model} placeholder="vendor/model" onChange={(e) => setDraft({ ...draft, model: e.target.value })} />
         </label>
         <label className="block">
-          <span className="text-[12px] font-medium text-content-muted">API key</span>
+          <span className={LABEL}>
+            API key <span className="text-content-faint">({HOSTS[draft.provider]?.keyHint})</span>
+          </span>
           <input
             type="password"
             autoComplete="new-password"
-            className="field mt-1"
+            className="field"
             value={apiKey}
             placeholder={view.hasKey ? `saved, ends in ${view.keyLast4} (paste to replace)` : "paste key"}
             onChange={(e) => setApiKey(e.target.value)}
           />
         </label>
+        <label className="block">
+          <span className={LABEL}>Base URL (OpenAI-compatible)</span>
+          <input
+            className="field font-mono text-[12px]"
+            value={draft.baseUrl}
+            placeholder="https://host/v1"
+            onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
+          />
+        </label>
       </div>
-      <label className="mt-4 block">
-        <span className="text-[12px] font-medium text-content-muted">Base URL (OpenAI-compatible, usually ending in /v1)</span>
-        <input
-          className="field mt-1 font-mono text-[12px]"
-          value={draft.baseUrl}
-          placeholder="https://host/v1"
-          onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
-        />
-        {draft.provider === "custom" && (
-          <span className="mt-1 block text-[11px] text-content-faint">
-            Use the OpenAI-compatible URL of the host serving your Meta model, for example Meta Model API, Fireworks, Baseten or Modal. This server must be able to reach it.
-          </span>
-        )}
-        {AI_PRESETS[draft.provider]?.group === META_API && (
-          <span className="mt-1 block text-[11px] text-content-faint">
-            Bills your Meta Model API credits. Create a key at dev.meta.ai → API keys. Prices are input / output per 1M tokens; Contributor models are much cheaper, but Meta may use the prompts (users' changelogs and code) to train its models.
-          </span>
-        )}
-      </label>
+      {HOSTS[draft.provider]?.note && <p className="mt-2 text-[11px] text-content-faint">{HOSTS[draft.provider].note}</p>}
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-4 rounded-xl border border-line bg-white/[0.02] p-3.5">
