@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type CatalogModel } from "../api";
+import { Dropdown } from "./ui";
 
 export const META_API_URL = "https://api.meta.ai/v1";
 export const OPENROUTER_URL = "https://openrouter.ai/api/v1";
@@ -235,36 +236,27 @@ export function ModelSelects({
 
   return (
     <>
-      <label className="block">
-        <span className={labelClass}>Vendor / family</span>
-        <select
-          className="field"
-          value={family?.name ?? ""}
-          disabled={!families.length}
-          onChange={(e) => {
-            const next = families.find((f) => f.name === e.target.value);
-            if (next) onModel(next.models[0].id);
-          }}
-        >
-          {!family && <option value="">{placeholder}</option>}
-          {families.map((f) => (
-            <option key={f.name} value={f.name}>
-              {f.name} ({f.models.length})
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block">
-        <span className={labelClass}>Model · price per 1M tokens (in / out)</span>
-        <select className="field" value={family ? model : ""} disabled={!family} onChange={(e) => onModel(e.target.value)}>
-          {!family && <option value="">{placeholder}</option>}
-          {family?.models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label} — {m.price}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Dropdown
+        label="Vendor / family"
+        labelClass={labelClass}
+        value={family?.name ?? ""}
+        options={families.map((f) => ({ value: f.name, label: f.name, hint: `${f.models.length} model${f.models.length === 1 ? "" : "s"}` }))}
+        onChange={(name) => {
+          const next = families.find((f) => f.name === name);
+          if (next) onModel(next.models[0].id);
+        }}
+        placeholder={placeholder}
+        disabled={!families.length}
+      />
+      <Dropdown
+        label="Model · price per 1M tokens (in / out)"
+        labelClass={labelClass}
+        value={family ? model : ""}
+        options={(family?.models ?? []).map((m) => ({ value: m.id, label: m.label, hint: m.price }))}
+        onChange={onModel}
+        placeholder={placeholder}
+        disabled={!family}
+      />
     </>
   );
 }

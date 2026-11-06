@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type AdminOverview, type AdminSettings, type DefaultLlmView, type SalesLead } from "../api";
-import { Panel, SectionHead, Chip, Switch, Spinner } from "./ui";
+import { Panel, SectionHead, Chip, Switch, Spinner, Dropdown } from "./ui";
 import { HOSTS, ModelSelects, hostOf } from "./ModelPicker";
 
 const ADMIN_HOSTS = ["meta", "openrouter", "custom"];
@@ -94,21 +94,16 @@ function DefaultAiPanel() {
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
-        <label className="block">
-          <span className={LABEL}>Provider</span>
-          <select
-            className="field"
-            value={draft.provider}
-            onChange={(e) => {
-              const host = HOSTS[e.target.value];
-              setDraft({ ...draft, provider: e.target.value, baseUrl: host.baseUrl ?? "", model: host.defaultModel ?? draft.model });
-            }}
-          >
-            {ADMIN_HOSTS.map((h) => (
-              <option key={h} value={h}>{HOSTS[h].label}</option>
-            ))}
-          </select>
-        </label>
+        <Dropdown
+          label="Provider"
+          labelClass={LABEL}
+          value={draft.provider}
+          options={ADMIN_HOSTS.map((h) => ({ value: h, label: HOSTS[h].label }))}
+          onChange={(h) => {
+            const host = HOSTS[h];
+            setDraft({ ...draft, provider: h, baseUrl: host.baseUrl ?? "", model: host.defaultModel ?? draft.model });
+          }}
+        />
         <ModelSelects host={draft.provider} model={draft.model} onModel={(model) => setDraft({ ...draft, model })} labelClass={LABEL} />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

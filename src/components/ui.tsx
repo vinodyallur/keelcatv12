@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { ChangeImpact } from "../api";
 
 const impactMeta: Record<ChangeImpact, { label: string; text: string; bg: string; ring: string }> = {
@@ -182,6 +183,191 @@ export function ProgressBar({
           style={indeterminate ? undefined : { width: `${pct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+export interface DropdownOption {
+  value: string;
+  label: string;
+  hint?: string;
+  group?: string;
+}
+
+const MENU_HEIGHT = 288;
+
+/** A select whose menu always opens below the field; native selects flip upward near the bottom of the screen. */
+export function Dropdown({
+  label,
+  labelClass,
+  value,
+  options,
+  onChange,
+  placeholder = "Select…",
+  disabled = false,
+}: {
+  label: string;
+  labelClass: string;
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const id = useId();
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLUListElement>(null);
+  const typed = useRef({ text: "", at: 0 });
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [box, setBox] = useState<{ top: number; left: number; width: number; maxWidth: number } | null>(null);
+  const selectedIndex = options.findIndex((o) => o.value === value);
+  const selected = options[selectedIndex];
+
+  const place = useCallback(() => {
+    const r = button.current?.getBoundingClientRect();
+    if (r) setBox({ top: r.bottom + 6, left: r.left, width: r.width, maxWidth: Math.max(r.width, Math.min(448, window.innerWidth - r.left - 12)) });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    // Scroll the page instead of flipping the menu up when there is not enough room below.
+    const room = window.innerHeight - (button.current?.getBoundingClientRect().bottom ?? 0) - 16;
+    if (room < MENU_HEIGHT) window.scrollBy({ top: MENU_HEIGHT - room, behavior: "instant" });
+    place();
+    const onScroll = (e: Event) => {
+      if (!menu.current?.contains(e.target as Node)) place();
+    };
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open, place]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!button.current?.contains(target) && !menu.current?.contains(target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  useEffect(() => {
+    const item = open ? document.getElementById(`${id}-${active}`) : null;
+    const list = menu.current;
+    if (!item || !list) return;
+    if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop;
+    else if (item.offsetTop + item.offsetHeight > list.scrollTop + list.clientHeight) {
+      list.scrollTop = item.offsetTop + item.offsetHeight - list.clientHeight;
+    }
+  }, [open, active, id, box]);
+
+  function openMenu() {
+    setActive(Math.max(0, selectedIndex));
+    setOpen(true);
+  }
+
+  function choose(i: number) {
+    if (options[i]) onChange(options[i].value);
+    setOpen(false);
+    button.current?.focus();
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === "Escape" || e.key === "Tab") {
+      setOpen(false);
+      return;
+    }
+    const last = options.length - 1;
+    const moves: Record<string, (i: number) => number> = {
+      ArrowDown: (i) => Math.min(last, i + 1),
+      ArrowUp: (i) => Math.max(0, i - 1),
+      Home: () => 0,
+      End: () => last,
+    };
+    if (moves[e.key] || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!open) openMenu();
+      else if (moves[e.key]) setActive(moves[e.key]);
+      else choose(active);
+      return;
+    }
+    // Type-ahead, like a native select.
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const now = Date.now();
+      const text = (now - typed.current.at < 700 ? typed.current.text : "") + e.key.toLowerCase();
+      typed.current = { text, at: now };
+      const from = (open ? active : Math.max(0, selectedIndex)) + (text.length === 1 ? 1 : 0);
+      const hit = options.map((_, k) => (from + k) % options.length).find((k) => options[k].label.toLowerCase().startsWith(text));
+      if (hit === undefined) return;
+      if (open) setActive(hit);
+      else onChange(options[hit].value);
+    }
+  }
+
+  return (
+    <div>
+      <span id={`${id}-label`} className={labelClass}>
+        {label}
+      </span>
+      <button
+        ref={button}
+        type="button"
+        role="combobox"
+        aria-labelledby={`${id}-label`}
+        aria-controls={`${id}-menu`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-activedescendant={open ? `${id}-${active}` : undefined}
+        disabled={disabled}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        onKeyDown={onKeyDown}
+        className="field field-select flex items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-content-faint"}`}>{selected?.label ?? placeholder}</span>
+        {selected?.hint && <span className="max-w-[45%] shrink-0 truncate text-[11px] text-content-faint">{selected.hint}</span>}
+      </button>
+      {open &&
+        box &&
+        createPortal(
+          <ul
+            ref={menu}
+            id={`${id}-menu`}
+            role="listbox"
+            aria-labelledby={`${id}-label`}
+            style={{ top: box.top, left: box.left, minWidth: box.width, maxWidth: box.maxWidth, maxHeight: MENU_HEIGHT }}
+            className="fixed z-[100] w-max overflow-y-auto rounded-xl border border-line-strong bg-surface-raised py-1 shadow-2xl"
+          >
+            {options.map((o, i) => (
+              <Fragment key={o.value}>
+                {o.group && o.group !== options[i - 1]?.group && (
+                  <li role="presentation" className="px-3.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-content-faint">
+                    {o.group}
+                  </li>
+                )}
+                <li
+                  id={`${id}-${i}`}
+                  role="option"
+                  aria-selected={o.value === value}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => choose(i)}
+                  className={`flex cursor-pointer items-center gap-4 px-3.5 py-2 text-[13px] ${i === active ? "bg-surface-hover" : ""} ${
+                    o.value === value ? "font-medium text-accent" : "text-content"
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">{o.label}</span>
+                  {o.hint && <span className="shrink-0 text-[11px] text-content-faint">{o.hint}</span>}
+                </li>
+              </Fragment>
+            ))}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }

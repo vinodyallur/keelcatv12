@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, type PublicConfig, type ConnectedRepo, type CreatedRepo } from "../api";
-import { Panel, SectionHead, Chip, Spinner, LangBadge, Switch } from "./ui";
+import { Panel, SectionHead, Chip, Spinner, LangBadge, Switch, Dropdown } from "./ui";
 import { HOSTS, ModelSelects } from "./ModelPicker";
 
 const LABEL = "mb-1.5 block text-[12px] font-medium text-content";
+const PROVIDERS = [
+  ...["meta", "openrouter", "custom"].map((h) => ({ value: h, label: HOSTS[h].label, group: "Cloud" })),
+  ...["ollama", "on-device"].map((h) => ({ value: h, label: HOSTS[h].label, group: "Local (private, your machine or phone)" })),
+  { value: "disabled", label: HOSTS.disabled.label, group: "Off" },
+];
 
 export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => void }) {
   const [cfg, setCfg] = useState<PublicConfig | null>(null);
@@ -511,22 +516,7 @@ export default function Connect({ onConfig }: { onConfig?: (c: PublicConfig) => 
           </span>
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <label className="block">
-            <span className={LABEL}>Provider</span>
-            <select className="field" value={llmProvider} onChange={(e) => changeProvider(e.target.value)}>
-              <optgroup label="Cloud">
-                {["meta", "openrouter", "custom"].map((h) => (
-                  <option key={h} value={h}>{HOSTS[h].label}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Local (private, your machine or phone)">
-                {["ollama", "on-device"].map((h) => (
-                  <option key={h} value={h}>{HOSTS[h].label}</option>
-                ))}
-              </optgroup>
-              <option value="disabled">{HOSTS.disabled.label}</option>
-            </select>
-          </label>
+          <Dropdown label="Provider" labelClass={LABEL} value={llmProvider} options={PROVIDERS} onChange={changeProvider} />
           <ModelSelects host={llmProvider} model={llmModel} onModel={setLlmModel} labelClass={LABEL} />
         </div>
         {llmProvider !== "disabled" && (
